@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zbike 2 - Allenamenti</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1428 100%);
+            color: #fff;
+            font-family: 'Chakra Petch', monospace;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #00ff88;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #666;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab:hover {
+            color: #00ff88;
+        }
+
+        .tab.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.2);
+            transform: scale(1.05);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn.small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn.danger {
+            border-color: #ff3366;
+            background: rgba(255, 51, 102, 0.1);
+            color: #ff3366;
+        }
+
+        .btn.secondary {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .workout-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .workout-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .workout-item:hover {
+            border-color: rgba(0, 255, 136, 0.3);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .workout-info h3 {
+            font-size: 18px;
+            color: #00ff88;
+            margin-bottom: 8px;
+        }
+
+        .workout-meta {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .workout-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #00ff88;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        .phase-list {
+            margin-bottom: 20px;
+        }
+
+        .phase-item {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .phase-title {
+            font-size: 14px;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .phase-fields {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        .workout-runner {
+            text-align: center;
+        }
+
+        .current-phase {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .phase-progress {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            height: 24px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .phase-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00d4ff 100%);
+            transition: width 0.3s ease;
+        }
+
+        .phase-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .next-phase {
+            font-size: 14px;
+            color: #888;
+            margin-top: 15px;
+        }
+
+        .workout-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .level-btn {
+            padding: 12px 8px;
+            font-size: 18px;
+            font-weight: 700;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: #666;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+        }
+
+        .level-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .level-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .level-btn.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: rgba(0, 255, 136, 0.05);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .metric-unit {
+            font-size: 14px;
+            color: #666;
+            margin-left: 4px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.disconnected {
+            background: #666;
+        }
+
+        .status-indicator.connected {
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #powerBtn:hover { transform: scale(1.15); box-shadow: 0 0 20px #ff3366; background: rgba(255,51,102,0.5); }
+        #powerBtn.visible { display: block !important; }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        @media (max-width:768px){body{padding:10px}h1{font-size:32px}.panel{padding:15px}.workout-item{flex-direction:column}.workout-actions{width:100%;flex-direction:column}.workout-actions .btn{width:100%}.metrics{grid-template-columns:repeat(2,1fr)}.level-grid{grid-template-columns:repeat(5,1fr);gap:6px}.level-btn{padding:8px 4px;font-size:14px}.phase-fields{grid-template-columns:1fr}#powerBtn{top:10px;right:10px;width:45px;height:45px}}@media (max-width:480px){.level-grid{grid-template-columns:repeat(3,1fr)}.metrics{grid-template-columns:1fr}}
+    </style>
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Zbike 2">
+    <meta name="theme-color" content="#0a0e27">
+    <meta name="description" content="Sistema Allenamento Completo per Zbike">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230a0e27' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='40' text-anchor='middle' fill='%2300ff88' font-family='monospace' font-weight='bold'%3EZ2%3C/text%3E%3C/svg%3E">
+
+    <!-- Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✅ Service Worker registrato'))
+                    .catch(err => console.log('❌ Service Worker errore:', err));
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; transition: all 0.3s; display: none;">⏻</button>
+
+        <div class="header">
+            <h1>ZBIKE 2 TRAINER</h1>
+            <div class="subtitle">Sistema Allenamento Completo</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="connection">🎚️ Controllo</button>
+            <button class="tab" data-tab="workouts">🚴 Allenamenti</button>
+            <button class="tab" data-tab="runner">▶️ Esegui</button>
+        </div>
+
+        <!-- Connection + Manual Control Tab -->
+        <div class="tab-content active" id="connection-tab">
+            <div class="panel">
+                <h2>
+                    <span id="statusIndicator" class="status-indicator disconnected"></span>
+                    Stato Connessione
+                </h2>
+                <div style="text-align: center;">
+                    <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
+                    <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
+                    <button id="disconnectBtn" class="btn danger" style="display: none;">🔴 DISCONNETTI</button>
+                </div>
+            </div>
+
+            <div id="metricsPanel" class="panel hidden">
+                <h2>📊 Metriche in Tempo Reale</h2>
+                <div class="metrics">
+                    <div class="metric-card">
+                        <div class="metric-label">⚡ Potenza</div>
+                        <div class="metric-value">
+                            <span id="powerValue">0</span>
+                            <span class="metric-unit">W</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">🔄 Cadenza</div>
+                        <div class="metric-value">
+                            <span id="cadenceValue">0</span>
+                            <span class="metric-unit">RPM</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">💨 Velocità</div>
+                        <div class="metric-value">
+                            <span id="speedValue">0</span>
+                            <span class="metric-unit">km/h</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">⏱️ Tempo</div>
+                        <div class="metric-value" id="timeValue">00:00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="controlPanel" class="panel hidden">
+                <h2>🎚️ Controllo Manuale (Livello: <span id="currentLevel">1</span>/15)</h2>
+                <div class="level-grid" id="levelGrid"></div>
+            </div>
+        </div>
+
+        <!-- Workouts Tab -->
+        <div class="tab-content" id="workouts-tab">
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">🚴 I Miei Allenamenti</h2>
+                    <button id="newWorkoutBtn" class="btn">+ Nuovo Allenamento</button>
+                </div>
+                
+                <div id="workoutList" class="workout-list">
+                    <!-- Workouts will be loaded here -->
+                </div>
+
+                <div id="emptyWorkouts" class="empty-state hidden">
+                    <div style="font-size: 64px; margin-bottom: 20px;">🚴</div>
+                    <h3 style="color: #888; margin-bottom: 10px;">Nessun allenamento salvato</h3>
+                    <p style="color: #666;">Crea il tuo primo allenamento personalizzato!</p>
+                </div>
+            </div>
+
+            <!-- Workout Editor (hidden by default) -->
+            <div id="workoutEditor" class="panel hidden">
+                <h2>✏️ <span id="editorTitle">Nuovo Allenamento</span></h2>
+                
+                <div class="form-group">
+                    <label>Nome Allenamento</label>
+                    <input type="text" id="workoutName" placeholder="es. HIIT 30min">
+                </div>
+
+                <div class="phase-list" id="phaseList">
+                    <!-- Phases will be added here -->
+                </div>
+
+                <button id="addPhaseBtn" class="btn small secondary">+ Aggiungi Fase</button>
+
+                <div style="margin-top: 30px;">
+                    <div style="color: #888; margin-bottom: 15px;">
+                        Durata totale: <strong id="totalDuration" style="color: #00ff88;">0 min</strong>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="saveWorkoutBtn" class="btn">💾 Salva Allenamento</button>
+                        <button id="cancelEditBtn" class="btn danger">❌ Annulla</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Runner Tab -->
+        <div class="tab-content" id="runner-tab">
+            <div class="panel">
+                <div id="runnerIdle" class="empty-state">
+                    <div style="font-size: 64px; margin-bottom: 20px;">▶️</div>
+                    <h3 style="color: #888; margin-bottom: 10px;">Nessun allenamento in esecuzione</h3>
+                    <p style="color: #666;">Vai alla tab "Allenamenti" e premi "Inizia" su un workout</p>
+                </div>
+
+                <div id="runnerActive" class="workout-runner hidden">
+                    <h2 id="runnerWorkoutName" style="color: #00d4ff; margin-bottom: 30px;"></h2>
+                    
+                    <div class="current-phase">
+                        <div style="font-size: 16px; color: #888; margin-bottom: 10px;">FASE CORRENTE</div>
+                        <div id="runnerCurrentPhase">Riscaldamento</div>
+                    </div>
+
+                    <div style="font-size: 48px; font-weight: 700; color: #00ff88; margin: 20px 0;">
+                        <span id="runnerTimer">05:00</span>
+                    </div>
+
+                    <div class="phase-progress">
+                        <div id="runnerProgressBar" class="phase-progress-bar" style="width: 0%;"></div>
+                        <div class="phase-progress-text">
+                            Fase <span id="runnerPhaseNum">1</span> di <span id="runnerTotalPhases">5</span>
+                        </div>
+                    </div>
+
+                    <div class="next-phase">
+                        Prossimo: <strong id="runnerNextPhase" style="color: #00d4ff;">Sprint (Livello 14)</strong>
+                    </div>
+
+                    <div class="workout-controls">
+                        <button id="pauseBtn" class="btn secondary">⏸ Pausa</button>
+                        <button id="resumeBtn" class="btn secondary hidden">▶️ Riprendi</button>
+                        <button id="stopBtn" class="btn danger">⏹ Stop</button>
+                    </div>
+
+                    <!-- Manual Override Controls -->
+                    <div class="panel" style="margin-top: 30px; background: rgba(255, 170, 0, 0.05); border-color: rgba(255, 170, 0, 0.2);">
+                        <h2 style="color: #ffaa00; font-size: 16px; margin-bottom: 15px;">
+                            ⚙️ Controllo Manuale (Override)
+                        </h2>
+                        <p style="font-size: 13px; color: #888; margin-bottom: 15px;">
+                            Modifica temporaneamente il livello. L'allenamento continuerà con le fasi programmate.
+                        </p>
+                        <div class="level-grid" id="runnerLevelGrid"></div>
+                    </div>
+
+                    <div class="metrics" style="margin-top: 30px;">
+                        <div class="metric-card">
+                            <div class="metric-label">Livello Attuale</div>
+                            <div class="metric-value" id="runnerCurrentLevel">1</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Tempo Totale</div>
+                            <div class="metric-value" id="runnerTotalTime">00:00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== STATE =====
+        let device = null;
+        let server = null;
+        let writableChars = [];
+        let connected = false;
+        let currentPowerLevel = 1;
+        let sessionTime = 0;
+        let sessionTimer = null;
+
+        // Workout state
+        let workouts = [];
+        let editingWorkoutId = null;
+        let runningWorkout = null;
+        let workoutTimer = null;
+        let workoutPaused = false;
+        let currentPhaseIndex = 0;
+        let phaseTimeRemaining = 0;
+        let totalWorkoutTime = 0;
+
+        // Audio context for notifications
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // ===== ELEMENTS =====
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const scanBtn = document.getElementById('scanBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const metricsPanel = document.getElementById('metricsPanel');
+        const levelGrid = document.getElementById('levelGrid');
+        const statusIndicator = document.getElementById('statusIndicator');
+
+        // ===== AUDIO NOTIFICATIONS =====
+        function playBeep(frequency = 800, duration = 200) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        function playSkiStartBeeps() {
+            // 3 beeps like ski race start countdown
+            playBeep(800, 150);  // First beep
+            setTimeout(() => playBeep(800, 150), 600);  // Second beep
+            setTimeout(() => playBeep(1200, 300), 1200); // Third beep (higher pitch, longer)
+        }
+
+        // ===== TAB NAVIGATION =====
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // ===== BLUETOOTH CONNECTION =====
+        async function scanDevices() {
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [0x1826, 0x1816, 0x1818, 'battery_service']
+                });
+
+                scanBtn.style.display = 'none';
+                await connectDevice();
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+            }
+        }
+
+        async function connectDevice() {
+            try {
+                server = await device.gatt.connect();
+                const services = await server.getPrimaryServices();
+                
+                writableChars = [];
+                
+                for (const service of services) {
+                    try {
+                        const chars = await service.getCharacteristics();
+                        
+                        for (const char of chars) {
+                            if (char.properties.write || char.properties.writeWithoutResponse) {
+                                writableChars.push({ char, service: service.uuid });
+                            }
+                            
+                            if (char.properties.notify) {
+                                try {
+                                    await char.startNotifications();
+                                    char.addEventListener('characteristicvaluechanged', handleData);
+                                } catch (e) {}
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                connected = true;
+                updateConnectionUI();
+                startSession();
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+            }
+        }
+
+        function handleData(event) {
+            const value = event.target.value;
+            const bytes = new Uint8Array(value.buffer);
+            
+            try {
+                if (bytes.length >= 4) {
+                    const flags = value.getUint16(0, true);
+                    let offset = 2;
+                    
+                    if (flags & 0x01 && bytes.length >= offset + 2) {
+                        const speed = value.getUint16(offset, true) / 100;
+                        document.getElementById('speedValue').textContent = speed.toFixed(1);
+                        offset += 2;
+                    }
+                    
+                    if (flags & 0x04 && bytes.length >= offset + 2) {
+                        const cadence = value.getUint16(offset, true) / 2;
+                        document.getElementById('cadenceValue').textContent = Math.round(cadence);
+                        offset += 2;
+                    }
+                    
+                    if (flags & 0x40 && bytes.length >= offset + 2) {
+                        const power = value.getInt16(offset, true);
+                        document.getElementById('powerValue').textContent = Math.abs(power);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function disconnectDevice() {
+            if (server && server.connected) {
+                await server.disconnect();
+            }
+            connected = false;
+            device = null;
+            server = null;
+            writableChars = [];
+            releaseWakeLock();
+            stopSession();
+            updateConnectionUI();
+            
+            scanBtn.style.display = 'inline-block';
+            connectBtn.style.display = 'none';
+        }
+
+        function updateConnectionUI() {
+            if (connected) {
+                statusIndicator.classList.remove('disconnected');
+                statusIndicator.classList.add('connected');
+                disconnectBtn.style.display = 'none'; var pb = document.getElementById('powerBtn'); if(pb) pb.classList.add('visible');
+                connectBtn.style.display = 'none';
+                metricsPanel.classList.remove('hidden');
+                document.getElementById('controlPanel').classList.remove('hidden');
+                document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = false);
+            } else {
+                statusIndicator.classList.remove('connected');
+                statusIndicator.classList.add('disconnected');
+                disconnectBtn.style.display = 'none';
+                var pb2 = document.getElementById('powerBtn'); if(pb2) pb2.classList.remove('visible'); metricsPanel.classList.add('hidden');
+                document.getElementById('controlPanel').classList.add('hidden');
+                document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = true);
+            }
+        }
+
+        function startSession() {
+            sessionTime = 0;
+            sessionTimer = setInterval(() => {
+                sessionTime++;
+                const mins = Math.floor(sessionTime / 60);
+                const secs = sessionTime % 60;
+                document.getElementById('timeValue').textContent = 
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopSession() {
+            if (sessionTimer) {
+                clearInterval(sessionTimer);
+                sessionTimer = null;
+            }
+            sessionTime = 0;
+            document.getElementById('timeValue').textContent = '00:00';
+            document.getElementById('powerValue').textContent = '0';
+            document.getElementById('cadenceValue').textContent = '0';
+            document.getElementById('speedValue').textContent = '0';
+        }
+
+        // ===== MANUAL CONTROL =====
+        function getEstimatedWatts(level) {
+            const resistance = 10 + ((level - 1) / 14) * 140;
+            const baseWatts = 40;
+            const wattRange = 260;
+            return Math.round(baseWatts + (resistance / 150) * wattRange);
+        }
+
+        function initLevelButtons() {
+            // Main control tab level grid
+            for (let i = 1; i <= 15; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'level-btn';
+                
+                const watts = getEstimatedWatts(i);
+                btn.innerHTML = `<div style="font-size: 18px; font-weight: 700;">${i}</div>
+                                 <div style="font-size: 11px; opacity: 0.6; margin-top: 3px;">~${watts}W</div>`;
+                
+                btn.disabled = true;
+                btn.dataset.level = i;
+                btn.onclick = () => changePowerLevel(i);
+                if (i === 1) btn.classList.add('active');
+                levelGrid.appendChild(btn);
+            }
+            
+            // Runner tab level grid (for manual override)
+            const runnerLevelGrid = document.getElementById('runnerLevelGrid');
+            for (let i = 1; i <= 15; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'level-btn runner-level-btn';
+                
+                const watts = getEstimatedWatts(i);
+                btn.innerHTML = `<div style="font-size: 16px; font-weight: 700;">${i}</div>
+                                 <div style="font-size: 10px; opacity: 0.6; margin-top: 2px;">~${watts}W</div>`;
+                
+                btn.dataset.level = i;
+                btn.onclick = () => manualOverrideLevel(i);
+                runnerLevelGrid.appendChild(btn);
+            }
+        }
+
+        async function changePowerLevel(level) {
+            if (!connected || writableChars.length === 0) return;
+            
+            currentPowerLevel = level;
+            document.getElementById('currentLevel').textContent = level;
+            
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.level) === level) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            const resistance = Math.round(10 + ((level - 1) / 14) * 140);
+            
+            for (const item of writableChars) {
+                try {
+                    await item.char.writeValue(new Uint8Array([0x04, resistance]));
+                } catch (e) {}
+                
+                try {
+                    await item.char.writeValue(new Uint8Array([resistance]));
+                } catch (e) {}
+            }
+        }
+
+        async function manualOverrideLevel(level) {
+            if (!connected || !runningWorkout) return;
+            
+            // Update runner level buttons visual state
+            document.querySelectorAll('.runner-level-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.level) === level) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Set the resistance
+            await changePowerLevel(level);
+            
+            // Update runner display
+            document.getElementById('runnerCurrentLevel').textContent = level;
+        }
+
+        // ===== WORKOUT MANAGEMENT =====
+        function loadWorkouts() {
+            try {
+                const saved = localStorage.getItem('zbike_workouts');
+                workouts = saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                workouts = [];
+            }
+            renderWorkoutList();
+        }
+
+        function saveWorkouts() {
+            try {
+                localStorage.setItem('zbike_workouts', JSON.stringify(workouts));
+            } catch (e) {}
+        }
+
+        function renderWorkoutList() {
+            const list = document.getElementById('workoutList');
+            const empty = document.getElementById('emptyWorkouts');
+            
+            if (workouts.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            
+            empty.classList.add('hidden');
+            list.innerHTML = workouts.map(workout => {
+                const totalMin = Math.round(workout.phases.reduce((sum, p) => sum + p.duration, 0) / 60);
+                return `
+                    <div class="workout-item">
+                        <div class="workout-info">
+                            <h3>${workout.name}</h3>
+                            <div class="workout-meta">
+                                ${workout.phases.length} fasi • ${totalMin} minuti
+                            </div>
+                        </div>
+                        <div class="workout-actions">
+                            <button class="btn small secondary" onclick="startWorkout('${workout.id}')">▶️ Inizia</button>
+                            <button class="btn small" onclick="editWorkout('${workout.id}')">✏️ Modifica</button>
+                            <button class="btn small danger" onclick="deleteWorkout('${workout.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function newWorkout() {
+            editingWorkoutId = null;
+            document.getElementById('editorTitle').textContent = 'Nuovo Allenamento';
+            document.getElementById('workoutName').value = '';
+            document.getElementById('phaseList').innerHTML = '';
+            document.getElementById('workoutEditor').classList.remove('hidden');
+            addPhase();
+        }
+
+        function editWorkout(id) {
+            const workout = workouts.find(w => w.id === id);
+            if (!workout) return;
+            
+            editingWorkoutId = id;
+            document.getElementById('editorTitle').textContent = 'Modifica Allenamento';
+            document.getElementById('workoutName').value = workout.name;
+            
+            const phaseList = document.getElementById('phaseList');
+            phaseList.innerHTML = '';
+            
+            workout.phases.forEach(phase => {
+                addPhase(phase);
+            });
+            
+            document.getElementById('workoutEditor').classList.remove('hidden');
+            updateTotalDuration();
+        }
+
+        function deleteWorkout(id) {
+            if (!confirm('Sei sicuro di voler eliminare questo allenamento?')) return;
+            
+            workouts = workouts.filter(w => w.id !== id);
+            saveWorkouts();
+            renderWorkoutList();
+        }
+
+        function addPhase(phase = null) {
+            const phaseList = document.getElementById('phaseList');
+            const phaseNum = phaseList.children.length + 1;
+            
+            const isInterval = phase && phase.type === 'interval';
+            
+            const phaseDiv = document.createElement('div');
+            phaseDiv.className = 'phase-item';
+            phaseDiv.innerHTML = `
+                <div class="phase-header">
+                    <div class="phase-title">Fase ${phaseNum}</div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select class="phase-type" onchange="toggleIntervalFields(this)" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; font-size: 12px;">
+                            <option value="normal" ${!isInterval ? 'selected' : ''}>Fase Normale</option>
+                            <option value="interval" ${isInterval ? 'selected' : ''}>Ripetuta</option>
+                        </select>
+                        <button class="btn small danger" onclick="this.closest('.phase-item').remove(); updateTotalDuration();">🗑️</button>
+                    </div>
+                </div>
+                
+                <!-- Normal Phase Fields -->
+                <div class="normal-fields" style="display: ${isInterval ? 'none' : 'block'};">
+                    <div class="phase-fields">
+                        <div class="form-group" style="margin: 0;">
+                            <input type="text" class="phase-name" placeholder="Nome fase" value="${phase && !isInterval ? phase.name : ''}">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <input type="number" class="phase-duration" placeholder="Min" min="0.5" step="0.5" value="${phase && !isInterval ? phase.duration / 60 : ''}" onchange="updateTotalDuration()">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <select class="phase-level" onchange="updateTotalDuration()">
+                                ${Array.from({length: 15}, (_, i) => {
+                                    const level = i + 1;
+                                    const watts = getEstimatedWatts(level);
+                                    const selected = phase && !isInterval && phase.level === level ? 'selected' : '';
+                                    return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interval Fields -->
+                <div class="interval-fields" style="display: ${isInterval ? 'block' : 'none'};">
+                    <div style="background: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 8px; padding: 15px; margin-top: 10px;">
+                        <div style="color: #00d4ff; font-size: 13px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase;">
+                            🔁 Configurazione Ripetuta
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 11px; color: #00d4ff;">Lavoro (secondi)</label>
+                                <input type="number" class="interval-work-duration" placeholder="30" min="5" value="${isInterval ? phase.workDuration : ''}" onchange="updateTotalDuration()">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 11px; color: #00d4ff;">Livello Lavoro</label>
+                                <select class="interval-work-level" onchange="updateTotalDuration()">
+                                    ${Array.from({length: 15}, (_, i) => {
+                                        const level = i + 1;
+                                        const watts = getEstimatedWatts(level);
+                                        const selected = isInterval && phase.workLevel === level ? 'selected' : (level === 12 ? 'selected' : '');
+                                        return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 11px; color: #00d4ff;">Recupero (secondi)</label>
+                                <input type="number" class="interval-rest-duration" placeholder="30" min="5" value="${isInterval ? phase.restDuration : ''}" onchange="updateTotalDuration()">
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="font-size: 11px; color: #00d4ff;">Livello Recupero</label>
+                                <select class="interval-rest-level" onchange="updateTotalDuration()">
+                                    ${Array.from({length: 15}, (_, i) => {
+                                        const level = i + 1;
+                                        const watts = getEstimatedWatts(level);
+                                        const selected = isInterval && phase.restLevel === level ? 'selected' : (level === 4 ? 'selected' : '');
+                                        return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 11px; color: #00d4ff;">Numero Ripetizioni</label>
+                            <input type="number" class="interval-repeats" placeholder="5" min="1" value="${isInterval ? phase.repeats : '5'}" onchange="updateTotalDuration()">
+                        </div>
+                        
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 12px; color: #888;">
+                            <strong style="color: #00d4ff;">Esempio:</strong> 
+                            <span class="interval-preview">30s a Lv.12 + 30s a Lv.4, ripeti 5 volte = 5 min totali</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            phaseList.appendChild(phaseDiv);
+            
+            // Add event listener to update preview
+            if (isInterval || true) {
+                const fields = phaseDiv.querySelectorAll('.interval-work-duration, .interval-rest-duration, .interval-repeats, .interval-work-level, .interval-rest-level');
+                fields.forEach(field => {
+                    field.addEventListener('input', () => updateIntervalPreview(phaseDiv));
+                });
+            }
+            
+            if (isInterval) {
+                updateIntervalPreview(phaseDiv);
+            }
+            
+            updateTotalDuration();
+        }
+
+        function toggleIntervalFields(select) {
+            const phaseItem = select.closest('.phase-item');
+            const normalFields = phaseItem.querySelector('.normal-fields');
+            const intervalFields = phaseItem.querySelector('.interval-fields');
+            
+            if (select.value === 'interval') {
+                normalFields.style.display = 'none';
+                intervalFields.style.display = 'block';
+                updateIntervalPreview(phaseItem);
+            } else {
+                normalFields.style.display = 'block';
+                intervalFields.style.display = 'none';
+            }
+            
+            updateTotalDuration();
+        }
+
+        function updateIntervalPreview(phaseDiv) {
+            const workDur = parseInt(phaseDiv.querySelector('.interval-work-duration').value) || 0;
+            const restDur = parseInt(phaseDiv.querySelector('.interval-rest-duration').value) || 0;
+            const repeats = parseInt(phaseDiv.querySelector('.interval-repeats').value) || 0;
+            const workLevel = parseInt(phaseDiv.querySelector('.interval-work-level').value) || 1;
+            const restLevel = parseInt(phaseDiv.querySelector('.interval-rest-level').value) || 1;
+            
+            const totalSec = (workDur + restDur) * repeats;
+            const totalMin = (totalSec / 60).toFixed(1);
+            
+            const preview = phaseDiv.querySelector('.interval-preview');
+            if (preview) {
+                preview.textContent = `${workDur}s a Lv.${workLevel} + ${restDur}s a Lv.${restLevel}, ripeti ${repeats} volte = ${totalMin} min totali`;
+            }
+        }
+
+        function updateTotalDuration() {
+            const phases = document.querySelectorAll('.phase-item');
+            let total = 0;
+            
+            phases.forEach((phase, index) => {
+                const title = phase.querySelector('.phase-title');
+                title.textContent = `Fase ${index + 1}`;
+                
+                const duration = parseFloat(phase.querySelector('.phase-duration').value) || 0;
+                total += duration;
+            });
+            
+            document.getElementById('totalDuration').textContent = `${total.toFixed(1)} min`;
+        }
+
+        function saveWorkout() {
+            const name = document.getElementById('workoutName').value.trim();
+            if (!name) {
+                alert('Inserisci un nome per l\'allenamento');
+                return;
+            }
+            
+            const phaseElements = document.querySelectorAll('.phase-item');
+            if (phaseElements.length === 0) {
+                alert('Aggiungi almeno una fase');
+                return;
+            }
+            
+            const phases = [];
+            
+            // Process each phase
+            phaseElements.forEach(el => {
+                const phaseType = el.querySelector('.phase-type').value;
+                
+                if (phaseType === 'interval') {
+                    // Interval phase - expand into multiple work/rest phases
+                    const workDur = parseInt(el.querySelector('.interval-work-duration').value) || 0;
+                    const restDur = parseInt(el.querySelector('.interval-rest-duration').value) || 0;
+                    const repeats = parseInt(el.querySelector('.interval-repeats').value) || 0;
+                    const workLevel = parseInt(el.querySelector('.interval-work-level').value);
+                    const restLevel = parseInt(el.querySelector('.interval-rest-level').value);
+                    
+                    if (workDur <= 0 || restDur <= 0 || repeats <= 0) {
+                        return; // Skip invalid intervals
+                    }
+                    
+                    // Add each repeat as separate work/rest phases
+                    for (let i = 0; i < repeats; i++) {
+                        phases.push({
+                            name: `Lavoro ${i + 1}/${repeats}`,
+                            duration: workDur,
+                            level: workLevel,
+                            type: 'interval-work'
+                        });
+                        phases.push({
+                            name: `Recupero ${i + 1}/${repeats}`,
+                            duration: restDur,
+                            level: restLevel,
+                            type: 'interval-rest'
+                        });
+                    }
+                } else {
+                    // Normal phase
+                    const name = el.querySelector('.phase-name').value.trim() || 'Fase';
+                    const duration = Math.round((parseFloat(el.querySelector('.phase-duration').value) || 0) * 60);
+                    const level = parseInt(el.querySelector('.phase-level').value);
+                    
+                    if (duration <= 0) {
+                        return; // Skip invalid phases
+                    }
+                    
+                    phases.push({ name, duration, level, type: 'normal' });
+                }
+            });
+            
+            if (phases.length === 0) {
+                alert('Tutte le fasi devono avere una durata maggiore di 0');
+                return;
+            }
+            
+            const workout = {
+                id: editingWorkoutId || Date.now().toString(),
+                name,
+                phases
+            };
+            
+            if (editingWorkoutId) {
+                const index = workouts.findIndex(w => w.id === editingWorkoutId);
+                workouts[index] = workout;
+            } else {
+                workouts.push(workout);
+            }
+            
+            saveWorkouts();
+            renderWorkoutList();
+            cancelEdit();
+            
+            playBeep(1000, 200);
+        }
+
+        function cancelEdit() {
+            document.getElementById('workoutEditor').classList.add('hidden');
+            editingWorkoutId = null;
+        }
+
+        // ===== WORKOUT RUNNER =====
+        function startWorkout(id) {
+            if (!connected) {
+                alert('Connetti prima il dispositivo!');
+                return;
+            }
+            
+            const workout = workouts.find(w => w.id === id);
+            if (!workout) return;
+            
+            runningWorkout = workout;
+            currentPhaseIndex = 0;
+            totalWorkoutTime = 0;
+            workoutPaused = false;
+            
+            // Switch to runner tab
+            document.querySelector('[data-tab="runner"]').click();
+            
+            // Setup UI
+            document.getElementById('runnerIdle').classList.add('hidden');
+            document.getElementById('runnerActive').classList.remove('hidden');
+            document.getElementById('runnerWorkoutName').textContent = workout.name;
+            document.getElementById('runnerTotalPhases').textContent = workout.phases.length;
+            
+            // Start first phase with countdown beeps
+            playSkiStartBeeps();
+            setTimeout(() => startPhase(0), 2000); // Start after beeps finish
+            
+            // Start timer
+            workoutTimer = setInterval(updateWorkoutRunner, 1000);
+        }
+
+        function startPhase(index) {
+            if (index >= runningWorkout.phases.length) {
+                finishWorkout();
+                return;
+            }
+            
+            currentPhaseIndex = index;
+            const phase = runningWorkout.phases[index];
+            phaseTimeRemaining = phase.duration;
+            
+            // Update UI
+            document.getElementById('runnerCurrentPhase').textContent = phase.name;
+            document.getElementById('runnerPhaseNum').textContent = index + 1;
+            document.getElementById('runnerCurrentLevel').textContent = phase.level;
+            
+            // Update runner level buttons
+            document.querySelectorAll('.runner-level-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.level) === phase.level) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Set next phase text
+            if (index + 1 < runningWorkout.phases.length) {
+                const nextPhase = runningWorkout.phases[index + 1];
+                document.getElementById('runnerNextPhase').textContent = 
+                    `${nextPhase.name} (Livello ${nextPhase.level})`;
+            } else {
+                document.getElementById('runnerNextPhase').textContent = 'Fine allenamento';
+            }
+            
+            // Set resistance
+            changePowerLevel(phase.level);
+            
+            // Single beep to mark phase start (not at workout start)
+            if (index > 0) {
+                playBeep(1000, 150);
+            }
+        }
+
+        function updateWorkoutRunner() {
+            if (workoutPaused || !runningWorkout) return;
+            
+            phaseTimeRemaining--;
+            totalWorkoutTime++;
+            
+            // Update phase timer
+            const mins = Math.floor(phaseTimeRemaining / 60);
+            const secs = phaseTimeRemaining % 60;
+            document.getElementById('runnerTimer').textContent = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            // Update total time
+            const totalMins = Math.floor(totalWorkoutTime / 60);
+            const totalSecs = totalWorkoutTime % 60;
+            document.getElementById('runnerTotalTime').textContent = 
+                `${totalMins.toString().padStart(2, '0')}:${totalSecs.toString().padStart(2, '0')}`;
+            
+            // Update progress bar
+            const phase = runningWorkout.phases[currentPhaseIndex];
+            const progress = ((phase.duration - phaseTimeRemaining) / phase.duration) * 100;
+            document.getElementById('runnerProgressBar').style.width = `${progress}%`;
+            
+            // Ski-start countdown beeps at 3 seconds before phase change
+            if (phaseTimeRemaining === 3) {
+                playSkiStartBeeps();
+            }
+            
+            // Move to next phase
+            if (phaseTimeRemaining <= 0) {
+                startPhase(currentPhaseIndex + 1);
+            }
+        }
+
+        function pauseWorkout() {
+            workoutPaused = true;
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('resumeBtn').classList.remove('hidden');
+            playBeep(600, 200); // Lower beep for pause
+        }
+
+        function resumeWorkout() {
+            workoutPaused = false;
+            document.getElementById('pauseBtn').classList.remove('hidden');
+            document.getElementById('resumeBtn').classList.add('hidden');
+            playBeep(1000, 200); // Higher beep for resume
+        }
+
+        function stopWorkout() {
+            if (!confirm('Vuoi davvero interrompere l\'allenamento?')) return;
+            
+            if (workoutTimer) {
+                clearInterval(workoutTimer);
+                workoutTimer = null;
+            }
+            
+            runningWorkout = null;
+            workoutPaused = false;
+            
+            document.getElementById('runnerIdle').classList.remove('hidden');
+            document.getElementById('runnerActive').classList.add('hidden');
+            document.getElementById('pauseBtn').classList.remove('hidden');
+            document.getElementById('resumeBtn').classList.add('hidden');
+            
+            // Reset to level 1
+            changePowerLevel(1);
+            
+            playBeep(400, 300); // Low beep for stop
+        }
+
+        function finishWorkout() {
+            if (workoutTimer) {
+                clearInterval(workoutTimer);
+                workoutTimer = null;
+            }
+            
+            // Victory celebration beeps
+            playBeep(800, 150);
+            setTimeout(() => playBeep(1000, 150), 200);
+            setTimeout(() => playBeep(1200, 300), 400);
+            
+            setTimeout(() => {
+                runningWorkout = null;
+                document.getElementById('runnerIdle').classList.remove('hidden');
+                document.getElementById('runnerActive').classList.add('hidden');
+                changePowerLevel(1);
+            }, 1000);
+        }
+
+        // ===== EVENT LISTENERS =====
+        scanBtn.addEventListener('click', scanDevices);
+        connectBtn.addEventListener('click', connectDevice);
+        disconnectBtn.addEventListener('click', disconnectDevice);
+        
+        document.getElementById('newWorkoutBtn').addEventListener('click', newWorkout);
+        document.getElementById('addPhaseBtn').addEventListener('click', () => addPhase());
+        document.getElementById('saveWorkoutBtn').addEventListener('click', saveWorkout);
+        document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+        
+        document.getElementById('pauseBtn').addEventListener('click', pauseWorkout);
+        document.getElementById('resumeBtn').addEventListener('click', resumeWorkout);
+        document.getElementById('stopBtn').addEventListener('click', stopWorkout);
+
+        // ===== INITIALIZATION =====
+        initLevelButtons();
+        loadWorkouts();
+
+        if (!navigator.bluetooth) {
+            alert('Web Bluetooth non supportato. Usa Chrome o Edge.');
+            scanBtn.disabled = true;
+        }
+    
+    let wakeLock = null;
+    let lastConnectedDevice = null;
+
+    async function requestWakeLock() {
+        try { if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+    }
+
+    function releaseWakeLock() {
+        if(wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && lastConnectedDevice && !connected) {
+            try { device = lastConnectedDevice; await connectDevice(); } catch(e){}
+        }
+    });
+
+    setTimeout(function() {
+        var powerBtn = document.getElementById('powerBtn');
+        if (powerBtn) {
+            powerBtn.onclick = function() { disconnectDevice(); };
+        }
+    }, 500);
+
+    </script>
+</body>
+</html>
