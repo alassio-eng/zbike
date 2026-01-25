@@ -388,6 +388,15 @@
             50% { opacity: 0.5; }
         }
 
+        #powerBtn:hover { 
+            transform: scale(1.15); 
+            box-shadow: 0 0 20px #ff3366; 
+            background: rgba(255,51,102,0.5);
+        }
+        #powerBtn.visible { 
+            display: block !important; 
+        }
+
         .hidden {
             display: none !important;
         }
@@ -404,170 +413,16 @@
             margin-bottom: 20px;
             opacity: 0.3;
         }
-    
 
-        /* ====== MOBILE RESPONSIVE STYLES ====== */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            h1 {
-                font-size: 32px;
-            }
-
-            .subtitle {
-                font-size: 11px;
-                letter-spacing: 2px;
-            }
-
-            .tabs {
-                gap: 5px;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .tab {
-                padding: 10px 16px;
-                font-size: 13px;
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-
-            .panel {
-                padding: 15px;
-                border-radius: 12px;
-            }
-
-            .panel h2 {
-                font-size: 16px;
-                margin-bottom: 15px;
-            }
-
-            .workout-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-                padding: 15px;
-            }
-
-            .workout-info {
-                width: 100%;
-            }
-
-            .workout-info h3 {
-                font-size: 16px;
-            }
-
-            .workout-meta {
-                font-size: 12px;
-            }
-
-            .workout-actions {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            .workout-actions .btn {
-                width: 100%;
-            }
-
-            .metrics {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-            }
-
-            .metric-card {
-                padding: 15px;
-            }
-
-            .metric-value {
-                font-size: 24px;
-            }
-
-            .metric-label {
-                font-size: 10px;
-            }
-
-            .level-grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 6px;
-            }
-
-            .level-btn {
-                padding: 8px 4px;
-                font-size: 14px;
-                min-height: 60px;
-            }
-
-            .level-btn .power {
-                font-size: 10px;
-            }
-
-            .phase-fields {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-
-            .current-phase {
-                font-size: 24px;
-            }
-
-            .workout-controls {
-                flex-wrap: wrap;
-            }
-
-            .workout-controls .btn {
-                flex: 1 1 45%;
-                min-width: 120px;
-            }
-
-            .form-group input,
-            .form-group select {
-                font-size: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 24px;
-            }
-
-            .subtitle {
-                font-size: 10px;
-                letter-spacing: 1px;
-            }
-
-            .level-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-            }
-
-            .level-btn {
-                min-height: 70px;
-                font-size: 16px;
-            }
-
-            .metrics {
-                grid-template-columns: 1fr;
-            }
-
-            .btn {
-                padding: 10px 20px;
-                font-size: 13px;
-            }
-        }</style>
-
+        @media (max-width:768px){body{padding:10px}h1{font-size:32px}.panel{padding:15px}.workout-item{flex-direction:column}.workout-actions{width:100%;flex-direction:column}.workout-actions .btn{width:100%}.metrics{grid-template-columns:repeat(2,1fr)}.level-grid{grid-template-columns:repeat(5,1fr);gap:6px}.level-btn{padding:8px 4px;font-size:14px}.phase-fields{grid-template-columns:1fr}#powerBtn{top:10px;right:10px;width:45px;height:45px}}@media (max-width:480px){.level-grid{grid-template-columns:repeat(3,1fr)}.metrics{grid-template-columns:1fr}}
+    </style>
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Zbike 2">
     <meta name="theme-color" content="#0a0e27">
-    <link rel="manifest" href="manifest.json">
-
 </head>
 <body>
     <div class="container">
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; transition: all 0.3s; display: none;">⏻</button>
+
         <div class="header">
             <h1>ZBIKE 2 TRAINER</h1>
             <div class="subtitle">Sistema Allenamento Completo</div>
@@ -821,7 +676,7 @@
                 });
 
                 scanBtn.style.display = 'none';
-                connectBtn.style.display = 'inline-block';
+                await connectDevice();
                 
             } catch (error) {
                 console.error('Scan error:', error);
@@ -900,6 +755,7 @@
             device = null;
             server = null;
             writableChars = [];
+            releaseWakeLock();
             stopSession();
             updateConnectionUI();
             
@@ -911,7 +767,7 @@
             if (connected) {
                 statusIndicator.classList.remove('disconnected');
                 statusIndicator.classList.add('connected');
-                disconnectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none'; var pb = document.getElementById('powerBtn'); if(pb) pb.classList.add('visible');
                 connectBtn.style.display = 'none';
                 metricsPanel.classList.remove('hidden');
                 document.getElementById('controlPanel').classList.remove('hidden');
@@ -920,7 +776,7 @@
                 statusIndicator.classList.remove('connected');
                 statusIndicator.classList.add('disconnected');
                 disconnectBtn.style.display = 'none';
-                metricsPanel.classList.add('hidden');
+                var pb2 = document.getElementById('powerBtn'); if(pb2) pb2.classList.remove('visible'); metricsPanel.classList.add('hidden');
                 document.getElementById('controlPanel').classList.add('hidden');
                 document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = true);
             }
@@ -1555,6 +1411,31 @@
             alert('Web Bluetooth non supportato. Usa Chrome o Edge.');
             scanBtn.disabled = true;
         }
+    
+    let wakeLock = null;
+    let lastConnectedDevice = null;
+
+    async function requestWakeLock() {
+        try { if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+    }
+
+    function releaseWakeLock() {
+        if(wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && lastConnectedDevice && !connected) {
+            try { device = lastConnectedDevice; await connectDevice(); } catch(e){}
+        }
+    });
+
+    setTimeout(function() {
+        var powerBtn = document.getElementById('powerBtn');
+        if (powerBtn) {
+            powerBtn.onclick = function() { disconnectDevice(); };
+        }
+    }, 500);
+
     </script>
 </body>
 </html>
