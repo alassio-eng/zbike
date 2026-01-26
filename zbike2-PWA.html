@@ -334,7 +334,7 @@
 
         .metrics {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -423,11 +423,9 @@
             color: #00ff88;
         }
 
-        /* Fix power button icon */
-        #powerBtn::before {
-            content: "⏻";
+        /* Power button styling */
+        #powerBtn {
             font-size: 24px;
-            line-height: 1;
         }
 
         /* Better mobile responsiveness */
@@ -450,6 +448,111 @@
                 font-size: 10px;
                 padding: 6px 8px;
             }
+        }
+
+    
+        /* Status indicator dot in top right */
+        .status-dot {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #666;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+        }
+
+        .status-dot.disconnected {
+            background: #ff3366;
+        }
+
+        /* Free ride session controls */
+        .session-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .session-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .session-btn.play {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .session-btn.play:hover {
+            background: rgba(0, 255, 136, 0.2);
+            transform: scale(1.1);
+        }
+
+        .session-btn.pause {
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+
+        .session-btn.pause:hover {
+            background: rgba(255, 170, 0, 0.2);
+            transform: scale(1.1);
+        }
+
+        .session-btn.stop {
+            border-color: #ff3366;
+            color: #ff3366;
+        }
+
+        .session-btn.stop:hover {
+            background: rgba(255, 51, 102, 0.2);
+            transform: scale(1.1);
+        }
+
+        .session-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .session-timer {
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 15px 25px;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .session-timer-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .session-timer-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
         }
 
     </style>
@@ -475,6 +578,9 @@
     </script>
 </head>
 <body>
+        <!-- Status Indicator Dot -->
+    <div class="status-dot disconnected" id="statusDot" title="Disconnesso"></div>
+
     <div class="container">
         <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; transition: all 0.3s; display: none;">⏻</button>
 
@@ -486,18 +592,31 @@
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" data-tab="connection">🎚️ Controllo</button>
-            <button class="tab" data-tab="workouts">🚴 Allenamenti</button>
-            <button class="tab" data-tab="runner">▶️ Esegui</button>
+            
         </div>
 
         <!-- Connection + Manual Control Tab -->
         <div class="tab-content active" id="connection-tab">
             <div class="panel">
-                <h2>
-                    <span id="statusIndicator" class="status-indicator disconnected"></span>
-                    Stato Connessione
-                </h2>
-                <div style="text-align: center;">
+                <h2>🚴 Sessione Libera</h2>
+                <div class="session-controls">
+                    <button id="playSessionBtn" class="session-btn play" title="Avvia sessione" disabled>
+                        ▶
+                    </button>
+                    <button id="pauseSessionBtn" class="session-btn pause" title="Pausa" style="display: none;">
+                        ⏸
+                    </button>
+                    <button id="stopSessionBtn" class="session-btn stop" title="Stop" style="display: none;">
+                        ⏹
+                    </button>
+                    
+                    <div class="session-timer">
+                        <div class="session-timer-label">⏱ Tempo</div>
+                        <div class="session-timer-value" id="sessionTimerDisplay">00:00</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; text-align: center;">
                     <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
                     <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
                     <button id="disconnectBtn" class="btn danger" style="display: none;">🔴 DISCONNETTI</button>
@@ -567,7 +686,52 @@
                 </div>
             </div>
 
-            <!-- Workout Editor (hidden by default) -->
+            
+            <!-- Workout Runner (inline) -->
+            <div id="runnerActive" class="panel hidden" style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 id="runnerWorkoutName" style="margin: 0; color: #00d4ff;">Allenamento</h2>
+                    <button id="stopRunnerBtn" class="btn small danger">⏹ Stop</button>
+                </div>
+                
+                <div class="workout-runner" style="text-align: center;">
+                    <div class="current-phase" style="font-size: 24px; font-weight: 700; color: #00ff88; margin-bottom: 10px;">
+                        <div style="font-size: 12px; color: #888; margin-bottom: 5px;">FASE CORRENTE</div>
+                        <div id="runnerCurrentPhase">Riscaldamento</div>
+                    </div>
+
+                    <div style="font-size: 36px; font-weight: 700; color: #00ff88; margin: 15px 0;">
+                        <span id="runnerTimer">05:00</span>
+                    </div>
+
+                    <div class="phase-progress" style="background: rgba(0, 0, 0, 0.3); border-radius: 12px; height: 20px; margin: 15px 0; overflow: hidden; position: relative;">
+                        <div id="runnerProgressBar" style="height: 100%; background: linear-gradient(90deg, #00ff88 0%, #00d4ff 100%); width: 0%; transition: width 0.3s ease;"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600;">
+                            Fase <span id="runnerPhaseNum">1</span> di <span id="runnerTotalPhases">5</span>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 12px; color: #888; margin-bottom: 20px;">
+                        Prossimo: <strong id="runnerNextPhase" style="color: #00d4ff;">Sprint (Livello 14)</strong>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+                        <button id="pauseBtn" class="btn small secondary">⏸ Pausa</button>
+                        <button id="resumeBtn" class="btn small secondary hidden">▶️ Riprendi</button>
+                        <button id="stopBtn" class="btn small danger">⏹ Stop</button>
+                    </div>
+
+                    <!-- Manual Override Controls -->
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(255, 170, 0, 0.05); border: 1px solid rgba(255, 170, 0, 0.2); border-radius: 12px;">
+                        <div style="color: #ffaa00; font-size: 13px; font-weight: 600; margin-bottom: 10px;">
+                            ⚙️ Controllo Manuale (Livello: <span id="runnerCurrentLevel">1</span>/15)
+                        </div>
+                        <div class="level-grid" id="runnerLevelGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+<!-- Workout Editor (hidden by default) -->
             <div id="workoutEditor" class="panel hidden">
                 <h2>✏️ <span id="editorTitle">Nuovo Allenamento</span></h2>
                 
@@ -594,67 +758,6 @@
             </div>
         </div>
 
-        <!-- Workout Runner Tab -->
-        <div class="tab-content" id="runner-tab">
-            <div class="panel">
-                <div id="runnerIdle" class="empty-state">
-                    <div style="font-size: 64px; margin-bottom: 20px;">▶️</div>
-                    <h3 style="color: #888; margin-bottom: 10px;">Nessun allenamento in esecuzione</h3>
-                    <p style="color: #666;">Vai alla tab "Allenamenti" e premi "Inizia" su un workout</p>
-                </div>
-
-                <div id="runnerActive" class="workout-runner hidden">
-                    <h2 id="runnerWorkoutName" style="color: #00d4ff; margin-bottom: 30px;"></h2>
-                    
-                    <div class="current-phase">
-                        <div style="font-size: 16px; color: #888; margin-bottom: 10px;">FASE CORRENTE</div>
-                        <div id="runnerCurrentPhase">Riscaldamento</div>
-                    </div>
-
-                    <div style="font-size: 48px; font-weight: 700; color: #00ff88; margin: 20px 0;">
-                        <span id="runnerTimer">05:00</span>
-                    </div>
-
-                    <div class="phase-progress">
-                        <div id="runnerProgressBar" class="phase-progress-bar" style="width: 0%;"></div>
-                        <div class="phase-progress-text">
-                            Fase <span id="runnerPhaseNum">1</span> di <span id="runnerTotalPhases">5</span>
-                        </div>
-                    </div>
-
-                    <div class="next-phase">
-                        Prossimo: <strong id="runnerNextPhase" style="color: #00d4ff;">Sprint (Livello 14)</strong>
-                    </div>
-
-                    <div class="workout-controls">
-                        <button id="pauseBtn" class="btn secondary">⏸ Pausa</button>
-                        <button id="resumeBtn" class="btn secondary hidden">▶️ Riprendi</button>
-                        <button id="stopBtn" class="btn danger">⏹ Stop</button>
-                    </div>
-
-                    <!-- Manual Override Controls -->
-                    <div class="panel" style="margin-top: 30px; background: rgba(255, 170, 0, 0.05); border-color: rgba(255, 170, 0, 0.2);">
-                        <h2 style="color: #ffaa00; font-size: 16px; margin-bottom: 15px;">
-                            ⚙️ Controllo Manuale (Override)
-                        </h2>
-                        <p style="font-size: 13px; color: #888; margin-bottom: 15px;">
-                            Modifica temporaneamente il livello. L'allenamento continuerà con le fasi programmate.
-                        </p>
-                        <div class="level-grid" id="runnerLevelGrid"></div>
-                    </div>
-
-                    <div class="metrics" style="margin-top: 30px;">
-                        <div class="metric-card">
-                            <div class="metric-label">Livello Attuale</div>
-                            <div class="metric-value" id="runnerCurrentLevel">1</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Tempo Totale</div>
-                            <div class="metric-value" id="runnerTotalTime">00:00</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -668,6 +771,12 @@
         let sessionTime = 0;
         let sessionTimer = null;
         let totalDistance = 0;
+
+        // Free ride session state
+        let freeRideActive = false;
+        let freeRideTimer = null;
+        let freeRideTime = 0;
+        let freeRidePaused = false;
 
         // Workout state
         let workouts = [];
@@ -832,21 +941,57 @@
         }
 
         function updateConnectionUI() {
+            const statusDot = document.getElementById('statusDot');
+            const playBtn = document.getElementById('playSessionBtn');
+            
             if (connected) {
-                statusIndicator.classList.remove('disconnected');
-                statusIndicator.classList.add('connected');
-                disconnectBtn.style.display = 'none'; var pb = document.getElementById('powerBtn'); if(pb) pb.classList.add('visible');
+                // Status dot
+                statusDot.classList.remove('disconnected');
+                statusDot.classList.add('connected');
+                statusDot.title = 'Connesso';
+                
+                // Buttons
+                disconnectBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
+                scanBtn.style.display = 'none';
+                
+                // Enable play button
+                playBtn.disabled = false;
+                
+                // Panels
                 metricsPanel.classList.remove('hidden');
                 document.getElementById('controlPanel').classList.remove('hidden');
                 document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = false);
+                
+                // Power button
+                var pb = document.getElementById('powerBtn'); 
+                if(pb) pb.classList.add('visible');
             } else {
-                statusIndicator.classList.remove('connected');
-                statusIndicator.classList.add('disconnected');
+                // Status dot
+                statusDot.classList.remove('connected');
+                statusDot.classList.add('disconnected');
+                statusDot.title = 'Disconnesso';
+                
+                // Buttons
                 disconnectBtn.style.display = 'none';
-                var pb2 = document.getElementById('powerBtn'); if(pb2) pb2.classList.remove('visible'); metricsPanel.classList.add('hidden');
+                scanBtn.style.display = 'inline-block';
+                
+                // Disable play button
+                playBtn.disabled = true;
+                
+                // Stop any active session
+                if (freeRideActive) {
+                    stopFreeRide();
+                }
+                
+                // Panels
+                metricsPanel.classList.add('hidden');
                 document.getElementById('controlPanel').classList.add('hidden');
                 document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = true);
+                
+                // Power button
+                var pb2 = document.getElementById('powerBtn'); 
+                if(pb2) pb2.classList.remove('visible');
             }
         }
 
@@ -1394,10 +1539,11 @@
             workoutPaused = false;
             
             // Switch to runner tab
-            document.querySelector('[data-tab="runner"]').click();
             
             // Setup UI
-            document.getElementById('runnerIdle').classList.add('hidden');
+            document.getElementById('workoutList').style.display = 'none';
+            document.getElementById('emptyWorkouts').style.display = 'none';
+            document.getElementById('newWorkoutBtn').style.display = 'none';
             document.getElementById('runnerActive').classList.remove('hidden');
             document.getElementById('runnerWorkoutName').textContent = workout.name;
             document.getElementById('runnerTotalPhases').textContent = workout.phases.length;
@@ -1508,6 +1654,13 @@
             }
             
             runningWorkout = null;
+            
+            // Restore workouts list UI
+            document.getElementById('runnerActive').classList.add('hidden');
+            document.getElementById('workoutList').style.display = 'grid';
+            document.getElementById('newWorkoutBtn').style.display = 'inline-block';
+            renderWorkoutList();
+            
             workoutPaused = false;
             
             document.getElementById('runnerIdle').classList.remove('hidden');
@@ -1534,12 +1687,100 @@
             
             setTimeout(() => {
                 runningWorkout = null;
+                document.getElementById('runnerActive').classList.add('hidden');
+                document.getElementById('workoutList').style.display = 'grid';
+                document.getElementById('newWorkoutBtn').style.display = 'inline-block';
+                renderWorkoutList();
                 document.getElementById('runnerIdle').classList.remove('hidden');
                 document.getElementById('runnerActive').classList.add('hidden');
                 changePowerLevel(1);
             }, 1000);
         }
 
+        
+        // ===== FREE RIDE SESSION CONTROLS =====
+        function startFreeRide() {
+            if (!connected) {
+                alert('Connetti prima il dispositivo!');
+                return;
+            }
+            
+            freeRideActive = true;
+            freeRidePaused = false;
+            freeRideTime = 0;
+            
+            // UI updates
+            document.getElementById('playSessionBtn').style.display = 'none';
+            document.getElementById('pauseSessionBtn').style.display = 'inline-flex';
+            document.getElementById('stopSessionBtn').style.display = 'inline-flex';
+            
+            // Start timer
+            freeRideTimer = setInterval(() => {
+                if (!freeRidePaused) {
+                    freeRideTime++;
+                    updateSessionTimer();
+                }
+            }, 1000);
+            
+            playBeep(1000, 150);
+        }
+
+        function pauseFreeRide() {
+            freeRidePaused = true;
+            
+            // UI updates
+            document.getElementById('pauseSessionBtn').style.display = 'none';
+            document.getElementById('playSessionBtn').style.display = 'inline-flex';
+            document.getElementById('playSessionBtn').innerHTML = '▶';
+            document.getElementById('playSessionBtn').title = 'Riprendi';
+            
+            playBeep(600, 200);
+        }
+
+        function resumeFreeRide() {
+            freeRidePaused = false;
+            
+            // UI updates
+            document.getElementById('playSessionBtn').style.display = 'none';
+            document.getElementById('pauseSessionBtn').style.display = 'inline-flex';
+            
+            playBeep(1000, 200);
+        }
+
+        function stopFreeRide() {
+            if (!confirm('Vuoi davvero fermare la sessione di allenamento?')) {
+                return;
+            }
+            
+            freeRideActive = false;
+            freeRidePaused = false;
+            
+            if (freeRideTimer) {
+                clearInterval(freeRideTimer);
+                freeRideTimer = null;
+            }
+            
+            // UI updates
+            document.getElementById('playSessionBtn').style.display = 'inline-flex';
+            document.getElementById('playSessionBtn').innerHTML = '▶';
+            document.getElementById('playSessionBtn').title = 'Avvia sessione';
+            document.getElementById('pauseSessionBtn').style.display = 'none';
+            document.getElementById('stopSessionBtn').style.display = 'none';
+            
+            freeRideTime = 0;
+            updateSessionTimer();
+            
+            playBeep(400, 300);
+        }
+
+        function updateSessionTimer() {
+            const mins = Math.floor(freeRideTime / 60);
+            const secs = freeRideTime % 60;
+            document.getElementById('sessionTimerDisplay').textContent = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        
         // ===== EVENT LISTENERS =====
         scanBtn.addEventListener('click', scanDevices);
         connectBtn.addEventListener('click', connectDevice);
@@ -1553,6 +1794,18 @@
         document.getElementById('pauseBtn').addEventListener('click', pauseWorkout);
         document.getElementById('resumeBtn').addEventListener('click', resumeWorkout);
         document.getElementById('stopBtn').addEventListener('click', stopWorkout);
+        document.getElementById('stopRunnerBtn').addEventListener('click', stopWorkout);
+
+        // Free ride session controls
+        document.getElementById('playSessionBtn').addEventListener('click', () => {
+            if (freeRideActive && freeRidePaused) {
+                resumeFreeRide();
+            } else {
+                startFreeRide();
+            }
+        });
+        document.getElementById('pauseSessionBtn').addEventListener('click', pauseFreeRide);
+        document.getElementById('stopSessionBtn').addEventListener('click', stopFreeRide);
 
         // ===== INITIALIZATION =====
         initLevelButtons();
@@ -1591,7 +1844,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.0</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.2</strong> | © 2026
     </div>
 </body>
 </html>
