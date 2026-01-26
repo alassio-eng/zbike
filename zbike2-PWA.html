@@ -666,10 +666,6 @@
                         </div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-label">⏱️ Tempo</div>
-                        <div class="metric-value" id="timeValue">00:00</div>
-                    </div>
-                    <div class="metric-card">
                         <div class="metric-label">🚴 Distanza</div>
                         <div class="metric-value">
                             <span id="distanceValue">0.0</span>
@@ -1041,7 +1037,7 @@
                 sessionTime++;
                 const mins = Math.floor(sessionTime / 60);
                 const secs = sessionTime % 60;
-                document.getElementById('timeValue').textContent = 
+                // document.getElementById('timeValue').textContent = 
                     `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }, 1000);
         }
@@ -1884,7 +1880,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3.3</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.4</strong> | © 2026
     </div>
 </body>
 </html>
