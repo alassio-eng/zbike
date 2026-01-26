@@ -409,6 +409,49 @@
         }
 
         @media (max-width:768px){body{padding:10px}h1{font-size:32px}.panel{padding:15px}.workout-item{flex-direction:column}.workout-actions{width:100%;flex-direction:column}.workout-actions .btn{width:100%}.metrics{grid-template-columns:repeat(2,1fr)}.level-grid{grid-template-columns:repeat(5,1fr);gap:6px}.level-btn{padding:8px 4px;font-size:14px}.phase-fields{grid-template-columns:1fr}#powerBtn{top:10px;right:10px;width:45px;height:45px}}@media (max-width:480px){.level-grid{grid-template-columns:repeat(3,1fr)}.metrics{grid-template-columns:1fr}}
+    
+        .version-footer {
+            text-align: center;
+            padding: 20px 10px;
+            color: #666;
+            font-size: 11px;
+            margin-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .version-footer strong {
+            color: #00ff88;
+        }
+
+        /* Fix power button icon */
+        #powerBtn::before {
+            content: "⏻";
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        /* Better mobile responsiveness */
+        @media (max-width: 600px) {
+            .tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab {
+                flex-shrink: 0;
+            }
+            
+            .workout-actions {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .workout-actions .btn {
+                font-size: 10px;
+                padding: 6px 8px;
+            }
+        }
+
     </style>
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -1545,5 +1588,10 @@
     }, 500);
 
     </script>
+
+    <!-- Version Footer -->
+    <div class="version-footer">
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.0</strong> | © 2026
+    </div>
 </body>
 </html>
