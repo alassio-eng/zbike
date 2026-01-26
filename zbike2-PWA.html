@@ -1049,6 +1049,17 @@
                 await server.disconnect();
             }
             connected = false;
+        // Show connectionPanel when disconnecting
+        const cpDisc = document.getElementById('connectionPanel');
+        const cbDisc = document.getElementById('connectionButtons');
+        const lsDisc = document.getElementById('loadingState');
+        if (cpDisc) cpDisc.style.display = 'block';
+        if (cbDisc) cbDisc.style.display = 'block';
+        if (lsDisc) lsDisc.style.display = 'none';
+        const scanBtnDisc = document.getElementById('scanBtn');
+        const connectBtnDisc = document.getElementById('connectBtn');
+        if (scanBtnDisc) scanBtnDisc.style.display = 'inline-block';
+        if (connectBtnDisc) connectBtnDisc.style.display = 'none';
             device = null;
             server = null;
             writableChars = [];
