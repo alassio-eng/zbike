@@ -1982,20 +1982,26 @@
     </div>
 
     <script>
+    // Load version from sw.js with simple regex
     (async function loadVersion() {
         try {
             const response = await fetch('./sw.js');
             const swCode = await response.text();
-            // Correct regex without double escaping
-            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
-            if (match) {
+            console.log('📦 sw.js loaded, size:', swCode.length);
+
+            // Simple regex that definitely works in browser
+            const match = swCode.match(/zbike2-v([0-9.]+)/);
+
+            if (match && match[1]) {
                 document.getElementById('appVersion').textContent = match[1];
-                console.log('✅ Versione caricata:', match[1]);
+                console.log('✅ Version found:', match[1]);
             } else {
-                console.log('⚠️ Pattern versione non trovato in sw.js');
+                console.log('⚠️ Version pattern not found');
+                console.log('sw.js start:', swCode.substring(0, 100));
+                document.getElementById('appVersion').textContent = 'ND';
             }
         } catch(e) {
-            console.error('❌ Errore caricamento versione:', e);
+            console.error('❌ Error loading version:', e);
             document.getElementById('appVersion').textContent = 'ND';
         }
     })();
