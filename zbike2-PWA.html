@@ -1921,7 +1921,23 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.5</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">...</strong> | © 2026
     </div>
+
+    <script>
+    // Load version from service worker
+    (async function loadVersion() {
+        try {
+            const response = await fetch('./sw.js');
+            const swCode = await response.text();
+            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
+            if (match) {
+                document.getElementById('appVersion').textContent = match[1];
+            }
+        } catch(e) {
+            document.getElementById('appVersion').textContent = 'ND';
+        }
+    })();
+    </script>
 </body>
 </html>
