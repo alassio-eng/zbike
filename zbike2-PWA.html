@@ -611,6 +611,16 @@
 
         <!-- Connection + Manual Control Tab -->
         <div class="tab-content active" id="connection-tab">
+            <!-- Connection Buttons (Always Visible) -->
+            <div class="panel">
+                <div style="text-align: center;">
+                    <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
+                    <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
+                    <button id="disconnectBtn" class="btn danger" style="display: none;">🔴 DISCONNETTI</button>
+                </div>
+            </div>
+
+            <!-- Session Controls (Hidden until connected) -->
             <div class="panel hidden" id="sessionControlsPanel">
                 <h2>🚴 Sessione Libera</h2>
                 <div class="session-controls">
@@ -628,12 +638,6 @@
                         <div class="session-timer-label">⏱ Tempo</div>
                         <div class="session-timer-value" id="sessionTimerDisplay">00:00</div>
                     </div>
-                </div>
-                
-                <div style="margin-top: 20px; text-align: center;">
-                    <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
-                    <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
-                    <button id="disconnectBtn" class="btn danger" style="display: none;">🔴 DISCONNETTI</button>
                 </div>
             </div>
 
@@ -1880,7 +1884,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3.2</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3.3</strong> | © 2026
     </div>
 </body>
 </html>
