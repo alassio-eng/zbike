@@ -1049,17 +1049,6 @@
                 await server.disconnect();
             }
             connected = false;
-        // Show connectionPanel when disconnecting
-        const cpDisc = document.getElementById('connectionPanel');
-        const cbDisc = document.getElementById('connectionButtons');
-        const lsDisc = document.getElementById('loadingState');
-        if (cpDisc) cpDisc.style.display = 'block';
-        if (cbDisc) cbDisc.style.display = 'block';
-        if (lsDisc) lsDisc.style.display = 'none';
-        const scanBtnDisc = document.getElementById('scanBtn');
-        const connectBtnDisc = document.getElementById('connectBtn');
-        if (scanBtnDisc) scanBtnDisc.style.display = 'inline-block';
-        if (connectBtnDisc) connectBtnDisc.style.display = 'none';
             device = null;
             server = null;
             writableChars = [];
@@ -1105,6 +1094,7 @@
                 var pb = document.getElementById('powerBtn'); 
                 if(pb) pb.classList.add('visible');
             } else {
+                const cpUpdate = document.getElementById("connectionPanel");const cbUpdate = document.getElementById("connectionButtons");const lsUpdate = document.getElementById("loadingState");if(cpUpdate)cpUpdate.style.display="block";if(cbUpdate)cbUpdate.style.display="block";if(lsUpdate)lsUpdate.style.display="none";
                 // Status dot
                 statusDot.classList.remove('connected');
                 statusDot.classList.add('disconnected');
@@ -1994,7 +1984,7 @@
         try {
             const response = await fetch('./sw.js');
             const swCode = await response.text();
-            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
+            const match = swCode.match(/CACHE_NAME\\s*=\\s*['"]zbike2-v([\\d.]+)['"]/);
             if (match) document.getElementById('appVersion').textContent = match[1];
         } catch(e) { document.getElementById('appVersion').textContent = 'ND'; }
     })();
