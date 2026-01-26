@@ -616,7 +616,6 @@
                 <div style="text-align: center;">
                     <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
                     <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
-                    <button id="disconnectBtn" class="btn danger" style="display: none;">🔴 DISCONNETTI</button>
                 </div>
             </div>
 
@@ -810,7 +809,7 @@
         const tabContents = document.querySelectorAll('.tab-content');
         const scanBtn = document.getElementById('scanBtn');
         const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
+        const disconnectBtn = document.getElementById('powerBtn'); // Using power button
         const metricsPanel = document.getElementById('metricsPanel');
         const levelGrid = document.getElementById('levelGrid');
         const statusIndicator = document.getElementById('statusIndicator');
@@ -1019,7 +1018,7 @@
                 statusDot.title = 'Connesso';
                 
                 // Buttons
-                disconnectBtn.style.display = 'inline-block';
+                // disconnectBtn shown (power button)
                 connectBtn.style.display = 'none';
                 scanBtn.style.display = 'none';
                 
@@ -1046,7 +1045,7 @@
                 statusDot.title = 'Disconnesso';
                 
                 // Buttons
-                disconnectBtn.style.display = 'none';
+                // disconnectBtn hidden (power button)
                 scanBtn.style.display = 'inline-block';
                 
                 // Disable play button
@@ -1922,7 +1921,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.4.1</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.5</strong> | © 2026
     </div>
 </body>
 </html>
