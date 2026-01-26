@@ -568,6 +568,15 @@
 
     <!-- Service Worker -->
     <script>
+        // Suppress Chrome extension errors
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('extension')) {
+                e.preventDefault();
+                return true;
+            }
+        });
+        
+
         // Service Worker (solo per HTTPS/HTTP, non file://)
         try {
             if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
@@ -853,10 +862,15 @@
                 });
 
                 scanBtn.style.display = 'none';
+                connectBtn.style.display = 'inline-block';
+                
+                // Auto-connect immediately
                 await connectDevice();
                 
             } catch (error) {
                 console.error('Scan error:', error);
+                scanBtn.style.display = 'inline-block';
+                connectBtn.style.display = 'none';
             }
         }
 
@@ -896,6 +910,9 @@
                 
             } catch (error) {
                 console.error('Connection error:', error);
+                alert('Errore connessione: ' + error.message);
+                scanBtn.style.display = 'inline-block';
+                connectBtn.style.display = 'none';
             }
         }
 
@@ -1863,7 +1880,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3.1</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3.2</strong> | © 2026
     </div>
 </body>
 </html>
