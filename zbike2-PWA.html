@@ -935,7 +935,7 @@
                     let speed = speedRaw / 100;
                     console.log('Offset 0:', view.getUint16(0, true), '| 2:', view.getUint16(2, true), '| 4:', view.getUint16(4, true), '| 6:', view.getUint16(6, true));
                     if (cadence === 0) power = 0;
-                    if (power > 1500) { console.log('⚠️ Potenza anomala:', power); power = 0; }
+                    if (power > 1500) { console.log('⚠️ Anomala:', power); power = 0; }
                     if (power > 0 && power < 5) power = 0;
                     if (cadence < 0 || cadence > 200) cadence = 0;
                     if (speed < 0 || speed > 100) speed = 0;
@@ -944,11 +944,11 @@
                     document.getElementById('speedValue').textContent = speed.toFixed(1);
                     console.log(`✓ P:${power}W C:${cadence}RPM S:${speed.toFixed(1)}km/h`);
                 }
-            } catch (e) { console.error('❌ Parse error:', e); }
+            } catch (e) { console.error('❌ Parse:', e); }
         }
 
         async function connectDevice() {
-            const cb = document.getElementById("connectionButtons"); const ls = document.getElementById("loadingState"); const cp = document.getElementById("connectionPanel"); if(cb&&ls){cb.style.display="none";ls.style.display="block";}
+            const cb=document.getElementById("connectionButtons");const ls=document.getElementById("loadingState");const cp=document.getElementById("connectionPanel");if(cb&&ls){cb.style.display="none";ls.style.display="block";}
             try {
                 console.log('Connecting to device...');
                 
@@ -1014,7 +1014,7 @@
                         }
 
                         connected = true;
-                        if(cb&&ls){cb.style.display="none";ls.style.display="none";} if(cp)cp.style.display="none";
+                        if(cb&&ls){cb.style.display="none";ls.style.display="none";}if(cp){cp.style.display="none";}
                         updateConnectionUI();
                         startSession();
                         
@@ -1037,7 +1037,7 @@
             } catch (error) {
                 console.error('Connection error:', error);
                 alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
-                if(cb&&ls){cb.style.display="block";ls.style.display="none";} if(cp)cp.style.display="block";
+                if(cb&&ls){cb.style.display="block";ls.style.display="none";}if(cp){cp.style.display="block";}
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
