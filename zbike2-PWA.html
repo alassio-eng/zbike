@@ -50,7 +50,7 @@
         .tabs {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -292,8 +292,8 @@
 
         .level-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             margin-top: 20px;
         }
 
@@ -335,7 +335,7 @@
         .metrics {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 15px;
             margin-bottom: 20px;
         }
 
@@ -343,7 +343,7 @@
             background: rgba(0, 255, 136, 0.05);
             border: 1px solid rgba(0, 255, 136, 0.2);
             border-radius: 8px;
-            padding: 8px;
+            padding: 10px;
             text-align: center;
         }
 
@@ -596,7 +596,7 @@
     <div class="status-dot disconnected" id="statusDot" title="Disconnesso"></div>
 
     <div class="container">
-        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 32px; font-weight: normal; transition: all 0.3s; display: none; font-family: Arial, sans-serif; line-height: 50px; padding: 0;">×</button>
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; transition: all 0.3s; display: none;">⏻</button>
 
         <div class="header">
             <h1>ZBIKE 2 TRAINER</h1>
@@ -606,7 +606,7 @@
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" data-tab="connection">🎚️ Controllo</button>
-            <button class="tab" data-tab="workouts">🚴 Allenamenti</button>
+            
         </div>
 
         <!-- Connection + Manual Control Tab -->
@@ -894,82 +894,6 @@
             }
         }
 }
-
-        
-        // Handle incoming data from Bluetooth device with filtering
-        function handleData(event) {
-            try {
-                const value = event.target.value;
-                const buffer = value.buffer;
-                const view = new DataView(buffer);
-
-                // Debug: log raw data (comment out in production)
-                let hexString = '';
-                for (let i = 0; i < buffer.byteLength; i++) {
-                    hexString += '0x' + view.getUint8(i).toString(16).padStart(2, '0') + ' ';
-                }
-                console.log('Dati raw:', hexString, '| Bytes:', buffer.byteLength);
-
-                if (buffer.byteLength >= 8) {
-                    // Parse data - ADAPT THESE OFFSETS TO YOUR ZBIKE PROTOCOL
-                    let power = view.getUint16(0, true);     // Offset 0: Power
-                    let cadence = view.getUint8(2);          // Offset 2: Cadence
-                    let speedRaw = view.getUint16(3, true);  // Offset 3: Speed
-                    let speed = speedRaw / 100;              // Convert to km/h
-
-                    // Debug: log all offset values
-                    console.log('Offset 0:', view.getUint16(0, true), 
-                               '| Offset 2:', view.getUint16(2, true),
-                               '| Offset 4:', view.getUint16(4, true),
-                               '| Offset 6:', view.getUint16(6, true));
-
-                    // ===== FILTERING (SOLUTION 1) =====
-
-                    // Filter 1: If not pedaling (cadence = 0), force power to 0
-                    if (cadence === 0) {
-                        power = 0;
-                        console.log('⚠️ Cadenza = 0, potenza forzata a 0');
-                    }
-
-                    // Filter 2: Remove unrealistic high values (noise or wrong parsing)
-                    if (power > 1500) {
-                        console.log('⚠️ Potenza anomala ignorata:', power);
-                        power = 0;
-                    }
-
-                    // Filter 3: Remove low noise values
-                    if (power > 0 && power < 5) {
-                        console.log('⚠️ Rumore basso ignorato:', power);
-                        power = 0;
-                    }
-
-                    // Filter 4: Validate cadence range
-                    if (cadence < 0 || cadence > 200) {
-                        console.log('⚠️ Cadenza anomala ignorata:', cadence);
-                        cadence = 0;
-                    }
-
-                    // Filter 5: Validate speed range
-                    if (speed < 0 || speed > 100) {
-                        console.log('⚠️ Velocità anomala ignorata:', speed);
-                        speed = 0;
-                    }
-
-                    // Update UI with filtered values
-                    document.getElementById('powerValue').textContent = Math.round(power);
-                    document.getElementById('cadenceValue').textContent = Math.round(cadence);
-                    document.getElementById('speedValue').textContent = speed.toFixed(1);
-
-                    // Log final values
-                    console.log(`✓ Power: ${power}W | Cadence: ${cadence}RPM | Speed: ${speed.toFixed(1)}km/h`);
-
-                } else {
-                    console.log('⚠️ Buffer troppo corto:', buffer.byteLength, 'bytes');
-                }
-            } catch (e) {
-                console.error('❌ Data parsing error:', e);
-            }
-        }
 
         async function connectDevice() {
             try {
@@ -1997,23 +1921,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">ND</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.5</strong> | © 2026
     </div>
-
-    <script>
-    // Load version from service worker
-    (async function loadVersion() {
-        try {
-            const response = await fetch('./sw.js');
-            const swCode = await response.text();
-            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
-            if (match) {
-                document.getElementById('appVersion').textContent = match[1];
-            }
-        } catch(e) {
-            document.getElementById('appVersion').textContent = 'ND';
-        }
-    })();
-    </script>
 </body>
 </html>
