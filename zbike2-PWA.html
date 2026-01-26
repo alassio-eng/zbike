@@ -295,7 +295,7 @@
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 6px;
-            margin-top: 20px;
+            margin-top: 15px;
         }
 
         .level-btn {
@@ -334,19 +334,21 @@
         }
 
         .metrics {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            width: 100%;
         }
 
         .metric-card {
             background: rgba(0, 255, 136, 0.05);
             border: 1px solid rgba(0, 255, 136, 0.2);
             border-radius: 8px;
-            padding: 6px;
-            min-width: 0;
+            padding: 8px 4px;
             text-align: center;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .metric-label {
@@ -608,7 +610,7 @@
     <div class="status-dot disconnected" id="statusDot" title="Disconnesso"></div>
 
     <div class="container">
-        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 48px; height: 48px; background: rgba(255,51,102,0.4); color: #fff; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; display: none; font-family: Arial, sans-serif; line-height: 48px; text-align: center; padding: 0;">OFF</button>
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 48px; height: 48px; background: rgba(255,51,102,0.4); color: #fff; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: bold; display: none; font-family: Arial, sans-serif; line-height: 48px; text-align: center; padding: 0;">OFF</button>
 
         <div class="header">
             <h1>ZBIKE 2 TRAINER</h1>
@@ -625,7 +627,7 @@
         <div class="tab-content active" id="connection-tab">
             <!-- Connection Buttons (Always Visible) -->
             <div class="panel" id="connectionPanel">
-                <div style="text-align: center;" id="connectionButtons">
+                <div id="connectionButtons" style="text-align: center;">
                     <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
                     <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
                 </div>
@@ -918,8 +920,6 @@
         
         function handleData(event) {
             try {
-                document.getElementById('connectionButtons').style.display = 'none';
-                document.getElementById('loadingState').style.display = 'block';
                 const value = event.target.value;
                 const buffer = value.buffer;
                 const view = new DataView(buffer);
@@ -927,13 +927,13 @@
                 for (let i = 0; i < buffer.byteLength; i++) {
                     hexString += '0x' + view.getUint8(i).toString(16).padStart(2, '0') + ' ';
                 }
-                console.log('Dati raw:', hexString, '| Bytes:', buffer.byteLength);
+                console.log('📡 Raw:', hexString, '| Bytes:', buffer.byteLength);
                 if (buffer.byteLength >= 8) {
                     let power = view.getUint16(0, true);
                     let cadence = view.getUint8(2);
                     let speedRaw = view.getUint16(3, true);
                     let speed = speedRaw / 100;
-                    console.log('Offset 0:', view.getUint16(0, true), '| Offset 2:', view.getUint16(2, true), '| Offset 4:', view.getUint16(4, true), '| Offset 6:', view.getUint16(6, true));
+                    console.log('Offset 0:', view.getUint16(0, true), '| 2:', view.getUint16(2, true), '| 4:', view.getUint16(4, true), '| 6:', view.getUint16(6, true));
                     if (cadence === 0) power = 0;
                     if (power > 1500) { console.log('⚠️ Potenza anomala:', power); power = 0; }
                     if (power > 0 && power < 5) power = 0;
@@ -942,12 +942,13 @@
                     document.getElementById('powerValue').textContent = Math.round(power);
                     document.getElementById('cadenceValue').textContent = Math.round(cadence);
                     document.getElementById('speedValue').textContent = speed.toFixed(1);
-                    console.log(`✓ Power: ${power}W | Cadence: ${cadence}RPM | Speed: ${speed.toFixed(1)}km/h`);
+                    console.log(`✓ P:${power}W C:${cadence}RPM S:${speed.toFixed(1)}km/h`);
                 }
-            } catch (e) { console.error('❌ Parsing error:', e); }
+            } catch (e) { console.error('❌ Parse error:', e); }
         }
 
         async function connectDevice() {
+            const cb = document.getElementById("connectionButtons"); const ls = document.getElementById("loadingState"); if(cb&&ls){cb.style.display="none";ls.style.display="block";}
             try {
                 console.log('Connecting to device...');
                 
@@ -1013,6 +1014,7 @@
                         }
 
                         connected = true;
+                        if(cb&&ls){cb.style.display="block";ls.style.display="none";}
                         updateConnectionUI();
                         startSession();
                         
@@ -1034,9 +1036,8 @@
                 
             } catch (error) {
                 console.error('Connection error:', error);
- 
-                document.getElementById('connectionButtons').style.display = 'block';
-                document.getElementById('loadingState').style.display = 'none';               alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
+                alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
+                if(cb&&ls){cb.style.display="block";ls.style.display="none";}
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
@@ -1062,8 +1063,6 @@
         }
 
         function updateConnectionUI() {
-        const ldg = document.getElementById('loadingState'); const btn = document.getElementById('connectionButtons');
-        if (ldg && btn) { ldg.style.display = 'none'; btn.style.display = 'block'; }
             const statusDot = document.getElementById('statusDot');
             const playBtn = document.getElementById('playSessionBtn');
             
