@@ -861,6 +861,8 @@
                     optionalServices: [0x1826, 0x1816, 0x1818, 'battery_service']
                 });
 
+                setupDeviceListeners();
+
                 scanBtn.style.display = 'none';
                 connectBtn.style.display = 'inline-block';
                 
@@ -872,82 +874,122 @@
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
+        
+
+        // Add disconnect listener when device is selected
+        function setupDeviceListeners() {
+            if (device) {
+                device.addEventListener('gattserverdisconnected', () => {
+                    console.log('⚠️ Device disconnected unexpectedly');
+                    connected = false;
+                    updateConnectionUI();
+                    
+                    // Stop any active sessions
+                    if (freeRideActive) {
+                        stopFreeRide();
+                    }
+                    if (runningWorkout) {
+                        stopWorkout();
+                    }
+                });
+            }
         }
+}
 
         async function connectDevice() {
             try {
-                server = await device.gatt.connect();
-                // Ensure we're connected before getting services
-                if (!server.connected) {
-                    server = await device.gatt.connect();
-                }
-                const services = await server.getPrimaryServices();
+                console.log('Connecting to device...');
                 
-                writableChars = [];
+                // Multiple connection attempts with retry
+                let attempts = 0;
+                const maxAttempts = 3;
                 
-                for (const service of services) {
+                while (attempts < maxAttempts) {
                     try {
-                        const chars = await service.getCharacteristics();
+                        // Check if device exists
+                        if (!device) {
+                            throw new Error('Nessun dispositivo selezionato');
+                        }
                         
-                        for (const char of chars) {
-                            if (char.properties.write || char.properties.writeWithoutResponse) {
-                                writableChars.push({ char, service: service.uuid });
-                            }
-                            
-                            if (char.properties.notify) {
-                                try {
-                                    await char.startNotifications();
-                                    char.addEventListener('characteristicvaluechanged', handleData);
-                                } catch (e) {}
+                        // Check if already connected
+                        if (device.gatt.connected) {
+                            console.log('Already connected, disconnecting first...');
+                            await device.gatt.disconnect();
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
+                        // Connect
+                        console.log(`Connection attempt ${attempts + 1}/${maxAttempts}...`);
+                        server = await device.gatt.connect();
+                        
+                        // Verify connection
+                        if (!server || !server.connected) {
+                            throw new Error('Server not connected after connection attempt');
+                        }
+                        
+                        console.log('Connected! Getting services...');
+                        
+                        // Small delay to ensure connection is stable
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                        // Get services
+                        const services = await server.getPrimaryServices();
+                        console.log(`Found ${services.length} services`);
+                        
+                        writableChars = [];
+                        
+                        for (const service of services) {
+                            try {
+                                const chars = await service.getCharacteristics();
+                                
+                                for (const char of chars) {
+                                    if (char.properties.write || char.properties.writeWithoutResponse) {
+                                        writableChars.push({ char, service: service.uuid });
+                                    }
+                                    
+                                    if (char.properties.notify) {
+                                        try {
+                                            await char.startNotifications();
+                                            char.addEventListener('characteristicvaluechanged', handleData);
+                                        } catch (e) {
+                                            console.log('Notification error:', e);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.log('Service error:', e);
                             }
                         }
-                    } catch (e) {}
-                }
 
-                connected = true;
-                updateConnectionUI();
-                startSession();
+                        connected = true;
+                        updateConnectionUI();
+                        startSession();
+                        
+                        console.log('✅ Connection successful!');
+                        return; // Success!
+                        
+                    } catch (attemptError) {
+                        attempts++;
+                        console.error(`Connection attempt ${attempts} failed:`, attemptError);
+                        
+                        if (attempts < maxAttempts) {
+                            console.log('Retrying in 1 second...');
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        } else {
+                            throw attemptError; // Max attempts reached
+                        }
+                    }
+                }
                 
             } catch (error) {
                 console.error('Connection error:', error);
-                alert('Errore connessione: ' + error.message);
+                alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
         }
 
-        function handleData(event) {
-            const value = event.target.value;
-            const bytes = new Uint8Array(value.buffer);
-            
-            try {
-                if (bytes.length >= 4) {
-                    const flags = value.getUint16(0, true);
-                    let offset = 2;
-                    
-                    if (flags & 0x01 && bytes.length >= offset + 2) {
-                        const speed = value.getUint16(offset, true) / 100;
-                        // Update distance (speed in km/h, integrate over 1 second)
-                        totalDistance += speed / 3600; // Convert to km
-                        document.getElementById('distanceValue').textContent = totalDistance.toFixed(2);
-                        document.getElementById('speedValue').textContent = speed.toFixed(1);
-                        offset += 2;
-                    }
-                    
-                    if (flags & 0x04 && bytes.length >= offset + 2) {
-                        const cadence = value.getUint16(offset, true) / 2;
-                        document.getElementById('cadenceValue').textContent = Math.round(cadence);
-                        offset += 2;
-                    }
-                    
-                    if (flags & 0x40 && bytes.length >= offset + 2) {
-                        const power = value.getInt16(offset, true);
-                        document.getElementById('powerValue').textContent = Math.abs(power);
-                    }
-                }
-            } catch (e) {}
-        }
-
+        
         async function disconnectDevice() {
             if (server && server.connected) {
                 await server.disconnect();
@@ -1880,7 +1922,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.4</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.4.1</strong> | © 2026
     </div>
 </body>
 </html>
