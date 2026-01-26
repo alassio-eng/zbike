@@ -1,5 +1,5 @@
 // Service Worker per Zbike 2 PWA
-const CACHE_NAME = 'zbike2-v3.4';
+const CACHE_NAME = 'zbike2-v3.5';
 const urlsToCache = [
   './zbike2-PWA.html',
   './manifest.json'
