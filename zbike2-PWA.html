@@ -50,7 +50,8 @@
         .tabs {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
+            padding-bottom: 10px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -292,8 +293,8 @@
 
         .level-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
             margin-top: 20px;
         }
 
@@ -335,7 +336,7 @@
         .metrics {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            gap: 8px;
             margin-bottom: 20px;
         }
 
@@ -343,7 +344,8 @@
             background: rgba(0, 255, 136, 0.05);
             border: 1px solid rgba(0, 255, 136, 0.2);
             border-radius: 8px;
-            padding: 10px;
+            padding: 6px;
+            min-width: 0;
             text-align: center;
         }
 
@@ -555,7 +557,17 @@
             font-family: 'Courier New', monospace;
         }
 
-    </style>
+    
+        .loading-container { text-align: center; padding: 30px 20px; }
+        .loading-text { font-size: 18px; color: #00ff88; margin-bottom: 15px; font-weight: 600; }
+        .loading-dots { display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .loading-dot { width: 12px; height: 12px; background: #00ff88; border-radius: 50%; animation: dotPulse 1.4s infinite ease-in-out; }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes dotPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+        .panel { margin-bottom: 15px; }
+        .panel:first-child { margin-top: 0; }
+</style>
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -596,7 +608,7 @@
     <div class="status-dot disconnected" id="statusDot" title="Disconnesso"></div>
 
     <div class="container">
-        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 50px; height: 50px; background: rgba(255,51,102,0.3); color: #ff3366; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 24px; font-weight: bold; transition: all 0.3s; display: none;">⏻</button>
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 48px; height: 48px; background: rgba(255,51,102,0.4); color: #fff; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; display: none; font-family: Arial, sans-serif; line-height: 48px; text-align: center; padding: 0;">OFF</button>
 
         <div class="header">
             <h1>ZBIKE 2 TRAINER</h1>
@@ -606,16 +618,24 @@
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" data-tab="connection">🎚️ Controllo</button>
-            
+            <button class="tab" data-tab="workouts">🚴 Allenamenti</button>
         </div>
 
         <!-- Connection + Manual Control Tab -->
         <div class="tab-content active" id="connection-tab">
             <!-- Connection Buttons (Always Visible) -->
-            <div class="panel">
-                <div style="text-align: center;">
+            <div class="panel" id="connectionPanel">
+                <div style="text-align: center;" id="connectionButtons">
                     <button id="scanBtn" class="btn">🔍 SCANSIONA DISPOSITIVO</button>
                     <button id="connectBtn" class="btn" style="display: none;">🔵 CONNETTI</button>
+                </div>
+                <div id="loadingState" class="loading-container" style="display: none;">
+                    <div class="loading-text">Connessione in corso</div>
+                    <div class="loading-dots">
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                    </div>
                 </div>
             </div>
 
@@ -895,6 +915,38 @@
         }
 }
 
+        
+        function handleData(event) {
+            try {
+                document.getElementById('connectionButtons').style.display = 'none';
+                document.getElementById('loadingState').style.display = 'block';
+                const value = event.target.value;
+                const buffer = value.buffer;
+                const view = new DataView(buffer);
+                let hexString = '';
+                for (let i = 0; i < buffer.byteLength; i++) {
+                    hexString += '0x' + view.getUint8(i).toString(16).padStart(2, '0') + ' ';
+                }
+                console.log('Dati raw:', hexString, '| Bytes:', buffer.byteLength);
+                if (buffer.byteLength >= 8) {
+                    let power = view.getUint16(0, true);
+                    let cadence = view.getUint8(2);
+                    let speedRaw = view.getUint16(3, true);
+                    let speed = speedRaw / 100;
+                    console.log('Offset 0:', view.getUint16(0, true), '| Offset 2:', view.getUint16(2, true), '| Offset 4:', view.getUint16(4, true), '| Offset 6:', view.getUint16(6, true));
+                    if (cadence === 0) power = 0;
+                    if (power > 1500) { console.log('⚠️ Potenza anomala:', power); power = 0; }
+                    if (power > 0 && power < 5) power = 0;
+                    if (cadence < 0 || cadence > 200) cadence = 0;
+                    if (speed < 0 || speed > 100) speed = 0;
+                    document.getElementById('powerValue').textContent = Math.round(power);
+                    document.getElementById('cadenceValue').textContent = Math.round(cadence);
+                    document.getElementById('speedValue').textContent = speed.toFixed(1);
+                    console.log(`✓ Power: ${power}W | Cadence: ${cadence}RPM | Speed: ${speed.toFixed(1)}km/h`);
+                }
+            } catch (e) { console.error('❌ Parsing error:', e); }
+        }
+
         async function connectDevice() {
             try {
                 console.log('Connecting to device...');
@@ -982,7 +1034,9 @@
                 
             } catch (error) {
                 console.error('Connection error:', error);
-                alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
+ 
+                document.getElementById('connectionButtons').style.display = 'block';
+                document.getElementById('loadingState').style.display = 'none';               alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
@@ -1008,6 +1062,8 @@
         }
 
         function updateConnectionUI() {
+        const ldg = document.getElementById('loadingState'); const btn = document.getElementById('connectionButtons');
+        if (ldg && btn) { ldg.style.display = 'none'; btn.style.display = 'block'; }
             const statusDot = document.getElementById('statusDot');
             const playBtn = document.getElementById('playSessionBtn');
             
@@ -1921,7 +1977,17 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.5</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">ND</strong> | © 2026
     </div>
+    <script>
+    (async function loadVersion() {
+        try {
+            const response = await fetch('./sw.js');
+            const swCode = await response.text();
+            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
+            if (match) document.getElementById('appVersion').textContent = match[1];
+        } catch(e) { document.getElementById('appVersion').textContent = 'ND'; }
+    })();
+    </script>
 </body>
 </html>
