@@ -895,6 +895,45 @@
         }
 }
 
+        
+        // Handle incoming data from Bluetooth device
+        function handleData(event) {
+            try {
+                const value = event.target.value;
+                const buffer = value.buffer;
+
+                // Parse data received from device
+                // This needs to be adapted based on your Zbike 2 protocol
+                if (buffer.byteLength >= 8) {
+                    const view = new DataView(buffer);
+
+                    // Example parsing - adapt to your device's data format
+                    // Typical Fitness Machine Service or Cycling Power Service format
+                    const power = view.getUint16(0, true); // Power in watts (little endian)
+                    const cadence = view.getUint8(2); // Cadence in RPM
+                    const speedRaw = view.getUint16(3, true); // Speed (may need conversion)
+                    const speed = speedRaw / 100; // Convert to km/h
+
+                    // Update UI values
+                    if (power >= 0) {
+                        document.getElementById('powerValue').textContent = power;
+                    }
+                    if (cadence >= 0) {
+                        document.getElementById('cadenceValue').textContent = cadence;
+
+                        // Update distance calculation if speed is available
+                        if (speed > 0) {
+                            document.getElementById('speedValue').textContent = speed.toFixed(1);
+                        }
+                    }
+
+                    console.log(`Data: Power=${power}W, Cadence=${cadence}RPM, Speed=${speed.toFixed(1)}km/h`);
+                }
+            } catch (e) {
+                console.error('Data parsing error:', e);
+            }
+        }
+
         async function connectDevice() {
             try {
                 console.log('Connecting to device...');
@@ -1921,7 +1960,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">...</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">ND</strong> | © 2026
     </div>
 
     <script>
