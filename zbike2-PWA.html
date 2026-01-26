@@ -1095,6 +1095,7 @@
                 if(pb) pb.classList.add('visible');
             } else {
                 const cpUpdate = document.getElementById("connectionPanel");const cbUpdate = document.getElementById("connectionButtons");const lsUpdate = document.getElementById("loadingState");if(cpUpdate)cpUpdate.style.display="block";if(cbUpdate)cbUpdate.style.display="block";if(lsUpdate)lsUpdate.style.display="none";
+                document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(tc => tc.classList.remove("active"));document.querySelector('.tab[data-tab="connection"]').classList.add("active");document.getElementById("connection-tab").classList.add("active");
                 // Status dot
                 statusDot.classList.remove('connected');
                 statusDot.classList.add('disconnected');
@@ -1979,14 +1980,24 @@
     <div class="version-footer">
         <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">ND</strong> | © 2026
     </div>
+
     <script>
     (async function loadVersion() {
         try {
             const response = await fetch('./sw.js');
             const swCode = await response.text();
-            const match = swCode.match(/CACHE_NAME\\s*=\\s*['"]zbike2-v([\\d.]+)['"]/);
-            if (match) document.getElementById('appVersion').textContent = match[1];
-        } catch(e) { document.getElementById('appVersion').textContent = 'ND'; }
+            // Correct regex without double escaping
+            const match = swCode.match(/CACHE_NAME\s*=\s*['"]zbike2-v([\d.]+)['"]/);
+            if (match) {
+                document.getElementById('appVersion').textContent = match[1];
+                console.log('✅ Versione caricata:', match[1]);
+            } else {
+                console.log('⚠️ Pattern versione non trovato in sw.js');
+            }
+        } catch(e) {
+            console.error('❌ Errore caricamento versione:', e);
+            document.getElementById('appVersion').textContent = 'ND';
+        }
     })();
     </script>
 </body>
