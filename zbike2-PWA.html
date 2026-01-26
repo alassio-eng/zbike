@@ -948,7 +948,7 @@
         }
 
         async function connectDevice() {
-            const cb = document.getElementById("connectionButtons"); const ls = document.getElementById("loadingState"); if(cb&&ls){cb.style.display="none";ls.style.display="block";}
+            const cb = document.getElementById("connectionButtons"); const ls = document.getElementById("loadingState"); const cp = document.getElementById("connectionPanel"); if(cb&&ls){cb.style.display="none";ls.style.display="block";}
             try {
                 console.log('Connecting to device...');
                 
@@ -1014,7 +1014,7 @@
                         }
 
                         connected = true;
-                        if(cb&&ls){cb.style.display="block";ls.style.display="none";}
+                        if(cb&&ls){cb.style.display="none";ls.style.display="none";} if(cp)cp.style.display="none";
                         updateConnectionUI();
                         startSession();
                         
@@ -1037,7 +1037,7 @@
             } catch (error) {
                 console.error('Connection error:', error);
                 alert('Errore connessione: ' + error.message + '\n\nProva a:\n1. Riavviare Zbike\n2. Disabilitare/riabilitare Bluetooth\n3. Ricaricare la pagina');
-                if(cb&&ls){cb.style.display="block";ls.style.display="none";}
+                if(cb&&ls){cb.style.display="block";ls.style.display="none";} if(cp)cp.style.display="block";
                 scanBtn.style.display = 'inline-block';
                 connectBtn.style.display = 'none';
             }
