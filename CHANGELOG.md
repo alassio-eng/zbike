@@ -1,5 +1,65 @@
 # Zbike Trainer PWA - Changelog
 
+## Versione 2.3 (Gennaio 2026)
+
+### 🔧 Bug Fix & Miglioramenti
+
+#### Connessione Bluetooth Più Stabile
+- ✅ **Fix GATT disconnect error**: Riconnessione automatica se server si disconnette
+- ✅ **Gestione errori migliorata**: Meno crash durante connessione
+- ✅ **Retry automatico**: Se la connessione fallisce, riprova
+
+#### UI Migliorata
+- ✅ **Sessione nascosta quando disconnesso**: Play e timer non compaiono più nella schermata iniziale
+- ✅ **Compaiono solo dopo connessione**: UI più pulita
+- ✅ **Stato connessione spostato**: 
+  - 🟢/🔴 Pallino → **Sinistra in alto**
+  - ⏻ Pulsante spegnimento → **Destra in alto**
+
+#### Service Worker Safe
+- ✅ **Funziona con file://**: Nessun errore aprendo file locale
+- ✅ **Si registra solo su HTTP/HTTPS**: Check automatico protocollo
+- ✅ **Zero errori console**: Esperienza pulita
+
+### 📱 Layout Finale
+
+```
+🟢 ← Stato          [ZBIKE 2 TRAINER]          → ⏻
+├──────────────────────────────────────────────┤
+│ 🎚️ Controllo              🚴 Allenamenti    │
+├──────────────────────────────────────────────┤
+
+DISCONNESSO:
+│ [🔍 SCANSIONA DISPOSITIVO]                   │
+│                                               │
+│ (Sessione Libera nascosta)                   │
+
+CONNESSO:
+│ [🔴 DISCONNETTI]                             │
+├──────────────────────────────────────────────┤
+│ 🚴 Sessione Libera                           │
+│ ▶  [00:00]                                   │
+├──────────────────────────────────────────────┤
+│ 📊 Metriche                                  │
+│ ⚡ 0W      🔄 0RPM                           │
+│ 💨 0km/h   🚴 0.0km                          │
+├──────────────────────────────────────────────┤
+│ 🎚️ Controllo Manuale (1/15)                 │
+│ [1] [2] [3]                                  │
+└──────────────────────────────────────────────┘
+```
+
+### 🐛 Bug Risolti
+
+| Bug | Fix |
+|-----|-----|
+| ❌ GATT Server disconnected | ✅ Auto-reconnect |
+| ❌ SW error su file:// | ✅ Protocol check |
+| ❌ Play visibile disconnesso | ✅ Hidden fino a connessione |
+| ❌ Layout confuso | ✅ Stato a sx, power a dx |
+
+---
+
 ## Versione 2.2 (Gennaio 2026)
 
 ### 🎯 Miglioramenti UI

@@ -455,7 +455,7 @@
         .status-dot {
             position: fixed;
             top: 15px;
-            right: 15px;
+            left: 15px;
             width: 16px;
             height: 16px;
             border-radius: 50%;
@@ -568,12 +568,18 @@
 
     <!-- Service Worker -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('✅ Service Worker registrato'))
-                    .catch(err => console.log('❌ Service Worker errore:', err));
-            });
+        // Service Worker (solo per HTTPS/HTTP, non file://)
+        try {
+            if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => console.log('✅ SW registered'))
+                        .catch(err => console.log('⚠️ SW registration failed:', err));
+                });
+            }
+        } catch(e) {
+            console.log('⚠️ SW not available');
+        }
         }
     </script>
 </head>
@@ -597,7 +603,7 @@
 
         <!-- Connection + Manual Control Tab -->
         <div class="tab-content active" id="connection-tab">
-            <div class="panel">
+            <div class="panel hidden" id="sessionControlsPanel">
                 <h2>🚴 Sessione Libera</h2>
                 <div class="session-controls">
                     <button id="playSessionBtn" class="session-btn play" title="Avvia sessione" disabled>
@@ -858,6 +864,10 @@
         async function connectDevice() {
             try {
                 server = await device.gatt.connect();
+                // Ensure we're connected before getting services
+                if (!server.connected) {
+                    server = await device.gatt.connect();
+                }
                 const services = await server.getPrimaryServices();
                 
                 writableChars = [];
@@ -958,6 +968,11 @@
                 // Enable play button
                 playBtn.disabled = false;
                 
+                // Show session controls
+                const sessionPanel = document.getElementById('sessionControlsPanel');
+                if (sessionPanel) sessionPanel.classList.remove('hidden');
+                
+                
                 // Panels
                 metricsPanel.classList.remove('hidden');
                 document.getElementById('controlPanel').classList.remove('hidden');
@@ -978,6 +993,11 @@
                 
                 // Disable play button
                 playBtn.disabled = true;
+                
+                // Hide session controls
+                const sessionPanel = document.getElementById('sessionControlsPanel');
+                if (sessionPanel) sessionPanel.classList.add('hidden');
+                
                 
                 // Stop any active session
                 if (freeRideActive) {
@@ -1844,7 +1864,7 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.2</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong>2.3</strong> | © 2026
     </div>
 </body>
 </html>
