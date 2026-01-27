@@ -569,6 +569,8 @@
         @keyframes dotPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
         .panel { margin-bottom: 15px; }
         .panel:first-child { margin-top: 0; }
+        .simulation-active { border-color: #ffaa00 !important; box-shadow: 0 0 20px rgba(255, 165, 0, 0.3) !important; }
+        #simulationToggle.simulation-on { background: rgba(255, 165, 0, 0.3) !important; border-color: #ffaa00 !important; color: #ffaa00 !important; }
 </style>
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -637,6 +639,12 @@
                         <div class="loading-dot"></div>
                         <div class="loading-dot"></div>
                         <div class="loading-dot"></div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 15px; padding: 10px; background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 8px;">
+                    <button id="simulationToggle" class="btn secondary" style="font-size: 12px;">🎮 Modalità Simulazione: OFF</button>
+                    <div id="simStatus" style="font-size: 10px; color: #888; margin-top: 5px; display: none;">
+                        Stato: <span id="simState">Pronta</span> | Ciclo: <span id="simCycle">0</span>/4 | Dist: <span id="simDistance">0.0</span>km
                     </div>
                 </div>
             </div>
@@ -756,6 +764,42 @@
                         <button id="stopBtn" class="btn small danger">⏹ Stop</button>
                     </div>
 
+                    <!-- Real-time Metrics during Workout -->
+                    <div style="margin-top: 20px; margin-bottom: 20px;">
+                        <div style="color: #00ff88; font-size: 13px; font-weight: 600; margin-bottom: 10px; text-align: center;">
+                            📊 METRICHE IN TEMPO REALE
+                        </div>
+                        <div class="metrics">
+                            <div class="metric-card">
+                                <div class="metric-label">⚡ Potenza</div>
+                                <div class="metric-value">
+                                    <span id="runnerPowerValue">0</span>
+                                    <span class="metric-unit">W</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">🔄 Cadenza</div>
+                                <div class="metric-value">
+                                    <span id="runnerCadenceValue">0</span>
+                                    <span class="metric-unit">RPM</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">💨 Velocità</div>
+                                <div class="metric-value">
+                                    <span id="runnerSpeedValue">0</span>
+                                    <span class="metric-unit">km/h</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">⏱️ Tempo Totale</div>
+                                <div class="metric-value">
+                                    <span id="runnerTotalTime">00:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Manual Override Controls -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(255, 170, 0, 0.05); border: 1px solid rgba(255, 170, 0, 0.2); border-radius: 12px;">
                         <div style="color: #ffaa00; font-size: 13px; font-weight: 600; margin-bottom: 10px;">
@@ -798,6 +842,113 @@
 
     <script>
         // ===== STATE =====
+        // ==================== SIMULATION MODE ====================
+        let simulationMode = false;
+        let simulationRunning = false;
+        let simulationTimer = null;
+        let simulationDataTimer = null;
+        let simData = { power: 0, cadence: 0, speed: 0, distance: 0 };
+        const simPatterns = [{ power: 80, cadence: 85, speed: 25.5 },{ power: 165, cadence: 92, speed: 28.2 },{ power: 250, cadence: 95, speed: 32.1 },{ power: 0, cadence: 0, speed: 0 }];
+        let currentPattern = 0;
+        function toggleSimulation() {
+            const toggleBtn = document.getElementById('simulationToggle');
+            const simStatus = document.getElementById('simStatus');
+            if (!simulationMode) {
+                simulationMode = true;
+                toggleBtn.textContent = '🎮 Modalità Simulazione: ON';
+                toggleBtn.classList.add('simulation-on');
+                document.querySelector('#connectionPanel').classList.add('simulation-active');
+                simStatus.style.display = 'block';
+                document.getElementById('sessionControlsPanel').classList.remove('hidden');
+                document.getElementById('metricsPanel').classList.remove('hidden');
+                document.getElementById('controlPanel').classList.remove('hidden');
+                document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = false);
+                document.getElementById('playSessionBtn').disabled = false;
+                document.getElementById('simState').textContent = 'Pronta';
+            } else {
+                stopSimulation();
+                simulationMode = false;
+                toggleBtn.textContent = '🎮 Modalità Simulazione: OFF';
+                toggleBtn.classList.remove('simulation-on');
+                document.querySelector('#connectionPanel').classList.remove('simulation-active');
+                simStatus.style.display = 'none';
+                if (!connected) {
+                    document.getElementById('sessionControlsPanel').classList.add('hidden');
+                    document.getElementById('metricsPanel').classList.add('hidden');
+                    document.getElementById('controlPanel').classList.add('hidden');
+                }
+            }
+        }
+        function startSimulation() {
+            if (!simulationMode || simulationRunning) return;
+            simulationRunning = true;
+            simData.distance = 0;
+            currentPattern = -1;
+            document.getElementById('simState').textContent = 'In corso';
+            simulationLoop();
+            simulationTimer = setInterval(simulationLoop, 5000);
+            simulationDataTimer = setInterval(updateSimulationData, 1000);
+        }
+        function pauseSimulation() {
+            if (!simulationMode || !simulationRunning) return;
+            simulationRunning = false;
+            if (simulationTimer) { clearInterval(simulationTimer); simulationTimer = null; }
+            if (simulationDataTimer) { clearInterval(simulationDataTimer); simulationDataTimer = null; }
+            document.getElementById('simState').textContent = 'Pausa';
+        }
+        function resumeSimulation() {
+            if (!simulationMode || simulationRunning) return;
+            simulationRunning = true;
+            document.getElementById('simState').textContent = 'In corso';
+            simulationTimer = setInterval(simulationLoop, 5000);
+            simulationDataTimer = setInterval(updateSimulationData, 1000);
+        }
+        function stopSimulation() {
+            if (!simulationMode) return;
+            simulationRunning = false;
+            if (simulationTimer) { clearInterval(simulationTimer); simulationTimer = null; }
+            if (simulationDataTimer) { clearInterval(simulationDataTimer); simulationDataTimer = null; }
+            updateSimData(0, 0, 0);
+            simData.distance = 0;
+            document.getElementById('distanceValue').textContent = '0.0';
+            currentPattern = 0;
+            document.getElementById('simState').textContent = 'Pronta';
+            document.getElementById('simCycle').textContent = '0';
+            document.getElementById('simDistance').textContent = '0.0';
+        }
+        function simulationLoop() {
+            if (!simulationMode || !simulationRunning) return;
+            currentPattern = (currentPattern + 1) % simPatterns.length;
+            const pattern = simPatterns[currentPattern];
+            const power = Math.max(0, pattern.power + (Math.random() - 0.5) * 10);
+            const cadence = Math.max(0, pattern.cadence + (Math.random() - 0.5) * 5);
+            const speed = Math.max(0, pattern.speed + (Math.random() - 0.5) * 2);
+            simData.power = power; simData.cadence = cadence; simData.speed = speed;
+            updateSimData(power, cadence, speed);
+            document.getElementById('simCycle').textContent = (currentPattern + 1);
+        }
+        function updateSimulationData() {
+            if (!simulationMode || !simulationRunning) return;
+            const distanceIncrement = simData.speed / 3600;
+            simData.distance += distanceIncrement;
+            document.getElementById('distanceValue').textContent = simData.distance.toFixed(1);
+            document.getElementById('simDistance').textContent = simData.distance.toFixed(2);
+        }
+        function updateSimData(power, cadence, speed) {
+            document.getElementById('powerValue').textContent = Math.round(power);
+            document.getElementById('cadenceValue').textContent = Math.round(cadence);
+            document.getElementById('speedValue').textContent = speed.toFixed(1);
+            
+            // Update runner metrics too if workout is active
+            const runnerPower = document.getElementById('runnerPowerValue');
+            const runnerCadence = document.getElementById('runnerCadenceValue');
+            const runnerSpeed = document.getElementById('runnerSpeedValue');
+            if (runnerPower) runnerPower.textContent = Math.round(power);
+            if (runnerCadence) runnerCadence.textContent = Math.round(cadence);
+            if (runnerSpeed) runnerSpeed.textContent = speed.toFixed(1);
+        }
+        // ==================== END SIMULATION MODE ====================
+
         let device = null;
         let server = null;
         let writableChars = [];
@@ -916,36 +1067,6 @@
             }
         }
 }
-
-        
-        function handleData(event) {
-            try {
-                const value = event.target.value;
-                const buffer = value.buffer;
-                const view = new DataView(buffer);
-                let hexString = '';
-                for (let i = 0; i < buffer.byteLength; i++) {
-                    hexString += '0x' + view.getUint8(i).toString(16).padStart(2, '0') + ' ';
-                }
-                console.log('📡 Raw:', hexString, '| Bytes:', buffer.byteLength);
-                if (buffer.byteLength >= 8) {
-                    let power = view.getUint16(0, true);
-                    let cadence = view.getUint8(2);
-                    let speedRaw = view.getUint16(3, true);
-                    let speed = speedRaw / 100;
-                    console.log('Offset 0:', view.getUint16(0, true), '| 2:', view.getUint16(2, true), '| 4:', view.getUint16(4, true), '| 6:', view.getUint16(6, true));
-                    if (cadence === 0) power = 0;
-                    if (power > 1500) { console.log('⚠️ Anomala:', power); power = 0; }
-                    if (power > 0 && power < 5) power = 0;
-                    if (cadence < 0 || cadence > 200) cadence = 0;
-                    if (speed < 0 || speed > 100) speed = 0;
-                    document.getElementById('powerValue').textContent = Math.round(power);
-                    document.getElementById('cadenceValue').textContent = Math.round(cadence);
-                    document.getElementById('speedValue').textContent = speed.toFixed(1);
-                    console.log(`✓ P:${power}W C:${cadence}RPM S:${speed.toFixed(1)}km/h`);
-                }
-            } catch (e) { console.error('❌ Parse:', e); }
-        }
 
         async function connectDevice() {
             const cb=document.getElementById("connectionButtons");const ls=document.getElementById("loadingState");const cp=document.getElementById("connectionPanel");if(cb&&ls){cb.style.display="none";ls.style.display="block";}
@@ -1094,7 +1215,7 @@
                 var pb = document.getElementById('powerBtn'); 
                 if(pb) pb.classList.add('visible');
             } else {
-                const cpUpdate = document.getElementById("connectionPanel");const cbUpdate = document.getElementById("connectionButtons");const lsUpdate = document.getElementById("loadingState");if(cpUpdate)cpUpdate.style.display="block";if(cbUpdate)cbUpdate.style.display="block";if(lsUpdate)lsUpdate.style.display="none";
+                const cpUpdate = document.getElementById("connectionPanel");const cbUpdate = document.getElementById("connectionButtons");const lsUpdate = document.getElementById("loadingState");if(cpUpdate&&!simulationMode)cpUpdate.style.display="block";if(cbUpdate)cbUpdate.style.display="block";if(lsUpdate)lsUpdate.style.display="none";
                 document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(tc => tc.classList.remove("active"));document.querySelector('.tab[data-tab="connection"]').classList.add("active");document.getElementById("connection-tab").classList.add("active");
                 // Status dot
                 statusDot.classList.remove('connected');
@@ -1154,10 +1275,25 @@
 
         // ===== MANUAL CONTROL =====
         function getEstimatedWatts(level) {
-            const resistance = 10 + ((level - 1) / 14) * 140;
-            const baseWatts = 40;
-            const wattRange = 260;
-            return Math.round(baseWatts + (resistance / 150) * wattRange);
+            // Distribuzione personalizzata dei watt per livello
+            const wattsMap = {
+                1: 40,   // Livello 1
+                2: 80,   // Livello 2
+                3: 120,  // Livello 3
+                4: 140,  // Livello 4
+                5: 165,  // Livello 5 (era al livello 4)
+                6: 190,  // Livello 6
+                7: 210,  // Livello 7
+                8: 230,  // Livello 8
+                9: 245,  // Livello 9
+                10: 260, // Livello 10
+                11: 270, // Livello 11
+                12: 280, // Livello 12
+                13: 285, // Livello 13
+                14: 290, // Livello 14
+                15: 300  // Livello 15
+            };
+            return wattsMap[level] || 40;
         }
 
         function initLevelButtons() {
@@ -1436,7 +1572,7 @@
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
                                         const selected = isInterval && phase.workLevel === level ? 'selected' : (level === 12 ? 'selected' : '');
-                                        return `<option value="${level}" ${selected}>Lv.${level}</option>`;
+                                        return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
                                 </select>
                             </div>
@@ -1454,7 +1590,7 @@
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
                                         const selected = isInterval && phase.restLevel === level ? 'selected' : (level === 4 ? 'selected' : '');
-                                        return `<option value="${level}" ${selected}>Lv.${level}</option>`;
+                                        return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
                                 </select>
                             </div>
@@ -1659,7 +1795,7 @@
 
         // ===== WORKOUT RUNNER =====
         function startWorkout(id) {
-            if (!connected) {
+            if (!connected && !simulationMode) {
                 alert('Connetti prima il dispositivo!');
                 return;
             }
@@ -1688,6 +1824,7 @@
             
             // Start timer
             workoutTimer = setInterval(updateWorkoutRunner, 1000);
+        if (simulationMode && !simulationRunning) { startSimulation(); }
         }
 
         function startPhase(index) {
@@ -1698,7 +1835,7 @@
             
             currentPhaseIndex = index;
             const phase = runningWorkout.phases[index];
-            phaseTimeRemaining = phase.duration;
+            phaseTimeRemaining = 0; // Start from 0 and count up
             
             // Update UI
             document.getElementById('runnerCurrentPhase').textContent = phase.name;
@@ -1734,7 +1871,7 @@
         function updateWorkoutRunner() {
             if (workoutPaused || !runningWorkout) return;
             
-            phaseTimeRemaining--;
+            phaseTimeRemaining++;
             totalWorkoutTime++;
             
             // Update phase timer
@@ -1751,16 +1888,17 @@
             
             // Update progress bar
             const phase = runningWorkout.phases[currentPhaseIndex];
-            const progress = ((phase.duration - phaseTimeRemaining) / phase.duration) * 100;
+            const progress = (phaseTimeRemaining / phase.duration) * 100;
             document.getElementById('runnerProgressBar').style.width = `${progress}%`;
             
             // Ski-start countdown beeps at 3 seconds before phase change
-            if (phaseTimeRemaining === 3) {
+            const timeToEnd = phase.duration - phaseTimeRemaining;
+            if (timeToEnd === 3) {
                 playSkiStartBeeps();
             }
             
             // Move to next phase
-            if (phaseTimeRemaining <= 0) {
+            if (phaseTimeRemaining >= phase.duration) {
                 startPhase(currentPhaseIndex + 1);
             }
         }
@@ -1770,14 +1908,18 @@
             document.getElementById('pauseBtn').classList.add('hidden');
             document.getElementById('resumeBtn').classList.remove('hidden');
             playBeep(600, 200); // Lower beep for pause
-        }
+        
+        if (simulationMode && simulationRunning) { pauseSimulation(); }
+    }
 
         function resumeWorkout() {
             workoutPaused = false;
             document.getElementById('pauseBtn').classList.remove('hidden');
             document.getElementById('resumeBtn').classList.add('hidden');
             playBeep(1000, 200); // Higher beep for resume
-        }
+        
+        if (simulationMode && !simulationRunning) { resumeSimulation(); }
+    }
 
         function stopWorkout() {
             if (!confirm('Vuoi davvero interrompere l\'allenamento?')) return;
@@ -1806,7 +1948,9 @@
             changePowerLevel(1);
             
             playBeep(400, 300); // Low beep for stop
-        }
+        
+        if (simulationMode && simulationRunning) { stopSimulation(); }
+    }
 
         function finishWorkout() {
             if (workoutTimer) {
@@ -1834,7 +1978,7 @@
         
         // ===== FREE RIDE SESSION CONTROLS =====
         function startFreeRide() {
-            if (!connected) {
+            if (!connected && !simulationMode) {
                 alert('Connetti prima il dispositivo!');
                 return;
             }
@@ -1852,6 +1996,7 @@
             freeRideTimer = setInterval(() => {
                 if (!freeRidePaused) {
                     freeRideTime++;
+        if (simulationMode && !simulationRunning) { startSimulation(); }
                     updateSessionTimer();
                 }
             }, 1000);
@@ -1869,7 +2014,9 @@
             document.getElementById('playSessionBtn').title = 'Riprendi';
             
             playBeep(600, 200);
-        }
+        
+        if (simulationMode && simulationRunning) { pauseSimulation(); }
+    }
 
         function resumeFreeRide() {
             freeRidePaused = false;
@@ -1879,12 +2026,16 @@
             document.getElementById('pauseSessionBtn').style.display = 'inline-flex';
             
             playBeep(1000, 200);
-        }
+        
+        if (simulationMode && !simulationRunning) { resumeSimulation(); }
+    }
 
         function stopFreeRide() {
             if (!confirm('Vuoi davvero fermare la sessione di allenamento?')) {
                 return;
-            }
+            
+        if (simulationMode && simulationRunning) { stopSimulation(); }
+    }
             
             freeRideActive = false;
             freeRidePaused = false;
@@ -1916,6 +2067,7 @@
 
         
         // ===== EVENT LISTENERS =====
+        document.addEventListener('DOMContentLoaded', function() { const simToggle = document.getElementById('simulationToggle'); if (simToggle) simToggle.addEventListener('click', toggleSimulation); });
         scanBtn.addEventListener('click', scanDevices);
         connectBtn.addEventListener('click', connectDevice);
         disconnectBtn.addEventListener('click', disconnectDevice);
@@ -1978,32 +2130,16 @@
 
     <!-- Version Footer -->
     <div class="version-footer">
-        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">ND</strong> | © 2026
+        <strong>Zbike Trainer PWA</strong> | Versione <strong id="appVersion">2.5</strong> | © 2026
     </div>
-
     <script>
-    // Load version from sw.js with simple regex
-    (async function loadVersion() {
+    (async function() {
         try {
-            const response = await fetch('./sw.js');
-            const swCode = await response.text();
-            console.log('📦 sw.js loaded, size:', swCode.length);
-
-            // Simple regex that definitely works in browser
-            const match = swCode.match(/zbike2-v([0-9.]+)/);
-
-            if (match && match[1]) {
-                document.getElementById('appVersion').textContent = match[1];
-                console.log('✅ Version found:', match[1]);
-            } else {
-                console.log('⚠️ Version pattern not found');
-                console.log('sw.js start:', swCode.substring(0, 100));
-                document.getElementById('appVersion').textContent = 'ND';
-            }
-        } catch(e) {
-            console.error('❌ Error loading version:', e);
-            document.getElementById('appVersion').textContent = 'ND';
-        }
+            const r = await fetch('./sw.js');
+            const t = await r.text();
+            const m = t.match(/zbike2-v([0-9.]+)/);
+            if (m && m[1]) document.getElementById('appVersion').textContent = m[1];
+        } catch(e) {}
     })();
     </script>
 </body>
