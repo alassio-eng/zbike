@@ -963,6 +963,14 @@
             if (runnerPower) runnerPower.textContent = Math.round(power);
             if (runnerCadence) runnerCadence.textContent = Math.round(cadence);
             if (runnerSpeed) runnerSpeed.textContent = speed.toFixed(1);
+            
+            // Update distance in simulation mode
+            if ((freeRideActive || runningWorkout) && speed > 0) {
+                totalDistance += speed / 3600; // Convert km/h to km traveled in 1 second
+                document.getElementById('distanceValue').textContent = totalDistance.toFixed(2);
+                const runnerDistance = document.getElementById('runnerDistanceValue');
+                if (runnerDistance) runnerDistance.textContent = totalDistance.toFixed(2);
+            }
         }
         // ==================== END SIMULATION MODE ====================
 
@@ -1048,9 +1056,14 @@
             const value = event.target.value;
             const data = new Uint8Array(value.buffer);
             
+            // Log raw data for debugging
+            console.log('BLE Data:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+            
             // Determine which service sent the data based on characteristic UUID
             const characteristic = event.target;
             const serviceUUID = characteristic.service.uuid;
+            
+            console.log('Service UUID:', serviceUUID);
             
             // Parse based on service type
             if (serviceUUID === '00001826-0000-1000-8000-00805f9b34fb' || serviceUUID === '1826') {
@@ -1066,30 +1079,40 @@
         }
         
         function parseFitnessMachineData(data) {
-            // Indoor Bike Data characteristic (0x2AD2)
-            // Parse according to FTMS specification
-            if (data.length >= 4) {
-                const flags = data[0] | (data[1] << 8);
-                let index = 2;
-                
-                // Instantaneous Speed (if present, bit 0 of flags)
-                if (flags & 0x01 && data.length >= index + 2) {
-                    const speed = (data[index] | (data[index + 1] << 8)) / 100; // km/h
-                    index += 2;
-                    updateMetric('speed', speed);
-                }
-                
-                // Instantaneous Cadence (if present, bit 2 of flags)
-                if (flags & 0x04 && data.length >= index + 2) {
-                    const cadence = (data[index] | (data[index + 1] << 8)) / 2; // RPM
-                    index += 2;
-                    updateMetric('cadence', cadence);
-                }
-                
-                // Instantaneous Power (if present, bit 6 of flags)
-                if (flags & 0x40 && data.length >= index + 2) {
-                    const power = data[index] | (data[index + 1] << 8); // Watts
-                    index += 2;
+            // Zbike 2 Indoor Bike Data - Custom structure (not standard FTMS)
+            // Structure observed from logs:
+            // Bytes 0-1: Flags (0x0874 = 0000100001110100)
+            // Bytes 2-3: Speed (x10, km/h) ← CORRECTED
+            // Bytes 4-5: Cadence (x2, RPM)
+            // Bytes 6-9: Unknown/Reserved
+            // Bytes 10-11: Distance counter (3 bytes)
+            // Bytes 11-12: Power (Watts)
+            
+            if (data.length < 13) {
+                console.warn('Data too short:', data.length);
+                return;
+            }
+            
+            const flags = data[0] | (data[1] << 8);
+            console.log('FTMS Flags:', flags.toString(2).padStart(16, '0'), 'Data length:', data.length);
+            
+            // Speed at bytes 2-3 (resolution 0.1 km/h) ← CORRECTED FROM /100 TO /10
+            const speedRaw = data[2] | (data[3] << 8);
+            const speed = speedRaw / 10; // CHANGED: divide by 10 instead of 100
+            console.log('Speed:', speed, 'km/h (raw:', speedRaw, ')');
+            if (speed > 0) updateMetric('speed', speed);
+            
+            // Cadence at bytes 4-5 (resolution 0.5 RPM)
+            const cadenceRaw = data[4] | (data[5] << 8);
+            const cadence = cadenceRaw / 2;
+            console.log('Cadence:', cadence, 'RPM (raw:', cadenceRaw, ')');
+            if (cadence > 0) updateMetric('cadence', cadence);
+            
+            // Power at bytes 11-12 (Watts) - CORRECTED POSITION
+            if (data.length >= 13) {
+                const power = data[11] | (data[12] << 8);
+                console.log('Power:', power, 'W (bytes 11-12)');
+                if (power > 0 && power < 1000) { // Sanity check: max 1000W
                     updateMetric('power', power);
                 }
             }
@@ -1128,6 +1151,10 @@
             }
         }
         
+        // Variables for distance calculation
+        let lastSpeedUpdate = Date.now();
+        let lastSpeed = 0;
+        
         function updateMetric(type, value) {
             if (type === 'power') {
                 document.getElementById('powerValue').textContent = Math.round(value);
@@ -1142,12 +1169,22 @@
                 const runnerSpeed = document.getElementById('runnerSpeedValue');
                 if (runnerSpeed) runnerSpeed.textContent = value.toFixed(1);
                 
-                // Update distance (speed in km/h, update every second)
+                // Update distance using real time delta (for Bluetooth real data)
                 if (freeRideActive || runningWorkout) {
-                    totalDistance += value / 3600; // Convert to km traveled in 1 second
+                    const now = Date.now();
+                    const deltaSeconds = (now - lastSpeedUpdate) / 1000;
+                    
+                    // Use average speed between updates for accuracy
+                    const avgSpeed = (value + lastSpeed) / 2;
+                    const distanceIncrement = (avgSpeed * deltaSeconds) / 3600; // km/h * hours = km
+                    
+                    totalDistance += distanceIncrement;
                     document.getElementById('distanceValue').textContent = totalDistance.toFixed(2);
                     const runnerDistance = document.getElementById('runnerDistanceValue');
                     if (runnerDistance) runnerDistance.textContent = totalDistance.toFixed(2);
+                    
+                    lastSpeedUpdate = now;
+                    lastSpeed = value;
                 }
             }
         }
@@ -1264,6 +1301,7 @@
                         if(cb&&ls){cb.style.display="none";ls.style.display="none";}if(cp){cp.style.display="none";}
                         updateConnectionUI();
                         startSession();
+                        requestWakeLock(); // Keep screen on during connection
                         
                         console.log('✅ Connection successful!');
                         return; // Success!
@@ -1294,8 +1332,23 @@
         async function disconnectDevice() {
             // If in simulation mode, turn it off
             if (simulationMode) {
+                // Stop any active workout or free ride before turning off simulation
+                if (runningWorkout) {
+                    stopWorkoutSilent(); // Stop without confirmation
+                }
+                if (freeRideActive) {
+                    stopFreeRideSilent(); // Stop without confirmation
+                }
                 toggleSimulation();
                 return;
+            }
+            
+            // Stop any active sessions before disconnecting
+            if (runningWorkout) {
+                stopWorkoutSilent(); // Stop without confirmation
+            }
+            if (freeRideActive) {
+                stopFreeRideSilent(); // Stop without confirmation
             }
             
             // Otherwise disconnect real device
@@ -1400,10 +1453,24 @@
                 sessionTimer = null;
             }
             sessionTime = 0;
-            document.getElementById('timeValue').textContent = '00:00';
+            
+            // Reset metrics
             document.getElementById('powerValue').textContent = '0';
             document.getElementById('cadenceValue').textContent = '0';
             document.getElementById('speedValue').textContent = '0';
+            document.getElementById('distanceValue').textContent = '0.0';
+            
+            // Reset runner metrics if they exist
+            const runnerPower = document.getElementById('runnerPowerValue');
+            const runnerCadence = document.getElementById('runnerCadenceValue');
+            const runnerSpeed = document.getElementById('runnerSpeedValue');
+            const runnerDistance = document.getElementById('runnerDistanceValue');
+            if (runnerPower) runnerPower.textContent = '0';
+            if (runnerCadence) runnerCadence.textContent = '0';
+            if (runnerSpeed) runnerSpeed.textContent = '0';
+            if (runnerDistance) runnerDistance.textContent = '0.0';
+            
+            totalDistance = 0;
         }
 
         // ===== MANUAL CONTROL =====
@@ -1463,8 +1530,6 @@
         }
 
         async function changePowerLevel(level) {
-            if (!connected || writableChars.length === 0) return;
-            
             currentPowerLevel = level;
             document.getElementById('currentLevel').textContent = level;
             
@@ -1474,6 +1539,18 @@
                     btn.classList.add('active');
                 }
             });
+            
+            // In simulation mode, update simulated power based on level
+            if (simulationMode) {
+                // Update simulation pattern based on level
+                const estimatedWatts = getEstimatedWatts(level);
+                // Adjust simulation data to match the level
+                simData.power = estimatedWatts * 0.9; // Base power for this level
+                return;
+            }
+            
+            // Real device control
+            if (!connected || writableChars.length === 0) return;
             
             const resistance = Math.round(10 + ((level - 1) / 14) * 140);
             
@@ -1489,7 +1566,8 @@
         }
 
         async function manualOverrideLevel(level) {
-            if (!connected || !runningWorkout) return;
+            if (!connected && !simulationMode) return;
+            if (!runningWorkout && !simulationMode) return;
             
             // Update runner level buttons visual state
             document.querySelectorAll('.runner-level-btn').forEach(btn => {
@@ -1812,8 +1890,22 @@
                 const title = phase.querySelector('.phase-title');
                 title.textContent = `Fase ${index + 1}`;
                 
-                const duration = parseFloat(phase.querySelector('.phase-duration').value) || 0;
-                total += duration;
+                const phaseType = phase.querySelector('.phase-type').value;
+                
+                if (phaseType === 'interval') {
+                    // Calcola durata ripetute
+                    const workDur = parseFloat(phase.querySelector('.interval-work-duration').value) || 0;
+                    const restDur = parseFloat(phase.querySelector('.interval-rest-duration').value) || 0;
+                    const repeats = parseInt(phase.querySelector('.interval-repeats').value) || 0;
+                    
+                    // Totale in secondi, poi converti in minuti
+                    const totalSeconds = (workDur + restDur) * repeats;
+                    total += totalSeconds / 60;
+                } else {
+                    // Fase normale
+                    const duration = parseFloat(phase.querySelector('.phase-duration').value) || 0;
+                    total += duration;
+                }
             });
             
             document.getElementById('totalDuration').textContent = `${total.toFixed(1)} min`;
@@ -1941,9 +2033,14 @@
             totalWorkoutTime = 0;
             totalDistance = 0;
             workoutPaused = false;
+            lastSpeedUpdate = Date.now(); // Reset for distance calculation
+            lastSpeed = 0;
             
             // Reset distance display
             document.getElementById('runnerDistanceValue').textContent = '0.0';
+            
+            // Keep screen on during workout
+            requestWakeLock();
             
             // Switch to runner tab
             
@@ -2017,12 +2114,6 @@
             document.getElementById('runnerTimer').textContent = 
                 `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             
-            // Update total time
-            const totalMins = Math.floor(totalWorkoutTime / 60);
-            const totalSecs = totalWorkoutTime % 60;
-            document.getElementById('runnerTotalTime').textContent = 
-                `${totalMins.toString().padStart(2, '0')}:${totalSecs.toString().padStart(2, '0')}`;
-            
             // Update progress bar
             const phase = runningWorkout.phases[currentPhaseIndex];
             const progress = (phaseTimeRemaining / phase.duration) * 100;
@@ -2059,7 +2150,18 @@
     }
 
         function stopWorkout() {
-            if (!confirm('Vuoi davvero interrompere l\'allenamento?')) return;
+            console.log('stopWorkout called');
+            
+            if (!confirm('Vuoi davvero interrompere l\'allenamento?')) {
+                console.log('User cancelled stop');
+                return;
+            }
+            
+            stopWorkoutSilent();
+        }
+        
+        function stopWorkoutSilent() {
+            console.log('Stopping workout...');
             
             if (workoutTimer) {
                 clearInterval(workoutTimer);
@@ -2067,27 +2169,35 @@
             }
             
             runningWorkout = null;
+            workoutPaused = false;
+            
+            // Release wake lock
+            releaseWakeLock();
             
             // Restore workouts list UI
             document.getElementById('runnerActive').classList.add('hidden');
             document.getElementById('workoutList').style.display = 'grid';
             document.getElementById('newWorkoutBtn').style.display = 'inline-block';
-            renderWorkoutList();
             
-            workoutPaused = false;
-            
-            document.getElementById('runnerIdle').classList.remove('hidden');
-            document.getElementById('runnerActive').classList.add('hidden');
+            // Reset buttons
             document.getElementById('pauseBtn').classList.remove('hidden');
             document.getElementById('resumeBtn').classList.add('hidden');
             
             // Reset to level 1
             changePowerLevel(1);
             
+            // Stop simulation if running
+            if (simulationMode && simulationRunning) { 
+                stopSimulation(); 
+            }
+            
             playBeep(400, 300); // Low beep for stop
-        
-        if (simulationMode && simulationRunning) { stopSimulation(); }
-    }
+            
+            // Re-render workout list
+            renderWorkoutList();
+            
+            console.log('Workout stopped successfully');
+        }
 
         function finishWorkout() {
             if (workoutTimer) {
@@ -2123,6 +2233,15 @@
             freeRideActive = true;
             freeRidePaused = false;
             freeRideTime = 0;
+            totalDistance = 0;
+            lastSpeedUpdate = Date.now(); // Reset for distance calculation
+            lastSpeed = 0;
+            
+            // Reset distance display
+            document.getElementById('distanceValue').textContent = '0.0';
+            
+            // Keep screen on during free ride
+            requestWakeLock();
             
             // UI updates
             document.getElementById('playSessionBtn').style.display = 'none';
@@ -2170,16 +2289,23 @@
         function stopFreeRide() {
             if (!confirm('Vuoi davvero fermare la sessione di allenamento?')) {
                 return;
+            }
             
-        if (simulationMode && simulationRunning) { stopSimulation(); }
-    }
-            
+            stopFreeRideSilent();
+        }
+        
+        function stopFreeRideSilent() {
             freeRideActive = false;
             freeRidePaused = false;
             
             if (freeRideTimer) {
                 clearInterval(freeRideTimer);
                 freeRideTimer = null;
+            }
+            
+            // Stop simulation if running
+            if (simulationMode && simulationRunning) { 
+                stopSimulation(); 
             }
             
             // UI updates
@@ -2243,16 +2369,35 @@
     let lastConnectedDevice = null;
 
     async function requestWakeLock() {
-        try { if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+        try { 
+            if('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake Lock attivato');
+            }
+        } catch(e){
+            console.error('Wake Lock fallito:', e);
+        }
     }
 
     function releaseWakeLock() {
-        if(wakeLock) { wakeLock.release(); wakeLock = null; }
+        if(wakeLock) { 
+            wakeLock.release(); 
+            wakeLock = null; 
+            console.log('Wake Lock rilasciato');
+        }
     }
 
     document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible' && lastConnectedDevice && !connected) {
-            try { device = lastConnectedDevice; await connectDevice(); } catch(e){}
+        if (document.visibilityState === 'visible') {
+            // Re-request wake lock when page becomes visible again
+            if ((connected || simulationMode) && (freeRideActive || runningWorkout)) {
+                await requestWakeLock();
+            }
+            
+            // Try to reconnect device if it was connected
+            if (lastConnectedDevice && !connected) {
+                try { device = lastConnectedDevice; await connectDevice(); } catch(e){}
+            }
         }
     });
 
