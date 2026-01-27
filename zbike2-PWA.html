@@ -429,7 +429,14 @@
 
         /* Power button styling */
         #powerBtn {
-            font-size: 24px;
+            font-size: 32px;
+        }
+        
+        #powerBtn:hover {
+            background: #ff3366;
+            color: #ffffff;
+            transform: scale(1.15);
+            box-shadow: 0 0 25px rgba(255, 51, 102, 1);
         }
 
         /* Better mobile responsiveness */
@@ -612,7 +619,7 @@
     <div class="status-dot disconnected" id="statusDot" title="Disconnesso"></div>
 
     <div class="container">
-        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 10px; right: 10px; z-index: 999999; width: 48px; height: 48px; background: rgba(255,51,102,0.4); color: #fff; border: 2px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: bold; display: none; font-family: Arial, sans-serif; line-height: 48px; text-align: center; padding: 0;">OFF</button>
+        <button id="powerBtn" title="Disconnetti" style="position: fixed; top: 15px; right: 15px; z-index: 999999; width: 44px; height: 44px; background: #ffffff; color: #ff3366; border: 3px solid #ff3366; border-radius: 50%; cursor: pointer; font-size: 32px; font-weight: bold; display: none; font-family: Arial, sans-serif; line-height: 38px; text-align: center; padding: 0; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">×</button>
 
         <div class="header">
             <h1>ZBIKE 2 TRAINER</h1>
@@ -792,9 +799,10 @@
                                 </div>
                             </div>
                             <div class="metric-card">
-                                <div class="metric-label">⏱️ Tempo Totale</div>
+                                <div class="metric-label">🚴 Distanza</div>
                                 <div class="metric-value">
-                                    <span id="runnerTotalTime">00:00</span>
+                                    <span id="runnerDistanceValue">0.0</span>
+                                    <span class="metric-unit">km</span>
                                 </div>
                             </div>
                         </div>
@@ -853,6 +861,8 @@
         function toggleSimulation() {
             const toggleBtn = document.getElementById('simulationToggle');
             const simStatus = document.getElementById('simStatus');
+            const powerBtn = document.getElementById('powerBtn');
+            
             if (!simulationMode) {
                 simulationMode = true;
                 toggleBtn.textContent = '🎮 Modalità Simulazione: ON';
@@ -865,6 +875,9 @@
                 document.querySelectorAll('.level-btn').forEach(btn => btn.disabled = false);
                 document.getElementById('playSessionBtn').disabled = false;
                 document.getElementById('simState').textContent = 'Pronta';
+                
+                // Show power button in simulation mode
+                if (powerBtn) powerBtn.style.display = 'block';
             } else {
                 stopSimulation();
                 simulationMode = false;
@@ -872,6 +885,10 @@
                 toggleBtn.classList.remove('simulation-on');
                 document.querySelector('#connectionPanel').classList.remove('simulation-active');
                 simStatus.style.display = 'none';
+                
+                // Hide power button when simulation is off
+                if (powerBtn) powerBtn.style.display = 'none';
+                
                 if (!connected) {
                     document.getElementById('sessionControlsPanel').classList.add('hidden');
                     document.getElementById('metricsPanel').classList.add('hidden');
@@ -1026,6 +1043,115 @@
         });
 
         // ===== BLUETOOTH CONNECTION =====
+        // Handle incoming Bluetooth data
+        function handleData(event) {
+            const value = event.target.value;
+            const data = new Uint8Array(value.buffer);
+            
+            // Determine which service sent the data based on characteristic UUID
+            const characteristic = event.target;
+            const serviceUUID = characteristic.service.uuid;
+            
+            // Parse based on service type
+            if (serviceUUID === '00001826-0000-1000-8000-00805f9b34fb' || serviceUUID === '1826') {
+                // Fitness Machine Service - Indoor Bike Data
+                parseFitnessMachineData(data);
+            } else if (serviceUUID === '00001818-0000-1000-8000-00805f9b34fb' || serviceUUID === '1818') {
+                // Cycling Power Service
+                parseCyclingPowerData(data);
+            } else if (serviceUUID === '00001816-0000-1000-8000-00805f9b34fb' || serviceUUID === '1816') {
+                // Cycling Speed and Cadence Service
+                parseCyclingSpeedCadenceData(data);
+            }
+        }
+        
+        function parseFitnessMachineData(data) {
+            // Indoor Bike Data characteristic (0x2AD2)
+            // Parse according to FTMS specification
+            if (data.length >= 4) {
+                const flags = data[0] | (data[1] << 8);
+                let index = 2;
+                
+                // Instantaneous Speed (if present, bit 0 of flags)
+                if (flags & 0x01 && data.length >= index + 2) {
+                    const speed = (data[index] | (data[index + 1] << 8)) / 100; // km/h
+                    index += 2;
+                    updateMetric('speed', speed);
+                }
+                
+                // Instantaneous Cadence (if present, bit 2 of flags)
+                if (flags & 0x04 && data.length >= index + 2) {
+                    const cadence = (data[index] | (data[index + 1] << 8)) / 2; // RPM
+                    index += 2;
+                    updateMetric('cadence', cadence);
+                }
+                
+                // Instantaneous Power (if present, bit 6 of flags)
+                if (flags & 0x40 && data.length >= index + 2) {
+                    const power = data[index] | (data[index + 1] << 8); // Watts
+                    index += 2;
+                    updateMetric('power', power);
+                }
+            }
+        }
+        
+        function parseCyclingPowerData(data) {
+            // Cycling Power Measurement characteristic
+            if (data.length >= 4) {
+                const flags = data[0] | (data[1] << 8);
+                // Instantaneous Power is always present at bytes 2-3
+                const power = data[2] | (data[3] << 8);
+                updateMetric('power', power);
+            }
+        }
+        
+        function parseCyclingSpeedCadenceData(data) {
+            // CSC Measurement characteristic
+            if (data.length >= 1) {
+                const flags = data[0];
+                let index = 1;
+                
+                // Wheel Revolution Data Present (bit 0)
+                if (flags & 0x01 && data.length >= index + 6) {
+                    // Could calculate speed from wheel revolutions
+                    index += 6;
+                }
+                
+                // Crank Revolution Data Present (bit 1)
+                if (flags & 0x02 && data.length >= index + 4) {
+                    const crankRevs = data[index] | (data[index + 1] << 8) | (data[index + 2] << 16) | (data[index + 3] << 24);
+                    const lastCrankTime = data[index + 4] | (data[index + 5] << 8);
+                    // Calculate cadence from crank revolutions
+                    // This requires storing previous values to calculate delta
+                    // Simplified: just show that data is coming
+                }
+            }
+        }
+        
+        function updateMetric(type, value) {
+            if (type === 'power') {
+                document.getElementById('powerValue').textContent = Math.round(value);
+                const runnerPower = document.getElementById('runnerPowerValue');
+                if (runnerPower) runnerPower.textContent = Math.round(value);
+            } else if (type === 'cadence') {
+                document.getElementById('cadenceValue').textContent = Math.round(value);
+                const runnerCadence = document.getElementById('runnerCadenceValue');
+                if (runnerCadence) runnerCadence.textContent = Math.round(value);
+            } else if (type === 'speed') {
+                document.getElementById('speedValue').textContent = value.toFixed(1);
+                const runnerSpeed = document.getElementById('runnerSpeedValue');
+                if (runnerSpeed) runnerSpeed.textContent = value.toFixed(1);
+                
+                // Update distance (speed in km/h, update every second)
+                if (freeRideActive || runningWorkout) {
+                    totalDistance += value / 3600; // Convert to km traveled in 1 second
+                    document.getElementById('distanceValue').textContent = totalDistance.toFixed(2);
+                    const runnerDistance = document.getElementById('runnerDistanceValue');
+                    if (runnerDistance) runnerDistance.textContent = totalDistance.toFixed(2);
+                }
+            }
+        }
+
         async function scanDevices() {
             try {
                 device = await navigator.bluetooth.requestDevice({
@@ -1166,6 +1292,13 @@
 
         
         async function disconnectDevice() {
+            // If in simulation mode, turn it off
+            if (simulationMode) {
+                toggleSimulation();
+                return;
+            }
+            
+            // Otherwise disconnect real device
             if (server && server.connected) {
                 await server.disconnect();
             }
@@ -1213,7 +1346,7 @@
                 
                 // Power button
                 var pb = document.getElementById('powerBtn'); 
-                if(pb) pb.classList.add('visible');
+                if(pb) pb.style.display = 'block';
             } else {
                 const cpUpdate = document.getElementById("connectionPanel");const cbUpdate = document.getElementById("connectionButtons");const lsUpdate = document.getElementById("loadingState");if(cpUpdate&&!simulationMode)cpUpdate.style.display="block";if(cbUpdate)cbUpdate.style.display="block";if(lsUpdate)lsUpdate.style.display="none";
                 document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(tc => tc.classList.remove("active"));document.querySelector('.tab[data-tab="connection"]').classList.add("active");document.getElementById("connection-tab").classList.add("active");
@@ -1246,7 +1379,7 @@
                 
                 // Power button
                 var pb2 = document.getElementById('powerBtn'); 
-                if(pb2) pb2.classList.remove('visible');
+                if(pb2) pb2.style.display = 'none';
             }
         }
 
@@ -1806,7 +1939,11 @@
             runningWorkout = workout;
             currentPhaseIndex = 0;
             totalWorkoutTime = 0;
+            totalDistance = 0;
             workoutPaused = false;
+            
+            // Reset distance display
+            document.getElementById('runnerDistanceValue').textContent = '0.0';
             
             // Switch to runner tab
             
