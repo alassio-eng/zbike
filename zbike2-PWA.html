@@ -1987,7 +1987,14 @@
                                     ${Array.from({length: 15}, (_, i) => {
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
-                                        const selected = isInterval && phase.workLevel === level ? 'selected' : (level === 12 ? 'selected' : '');
+                                        let selected = '';
+                                        if (isInterval && phase.workLevel !== undefined) {
+                                            // Use saved value
+                                            selected = phase.workLevel === level ? 'selected' : '';
+                                        } else if (!isInterval && level === 12) {
+                                            // Default for new intervals
+                                            selected = 'selected';
+                                        }
                                         return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
                                 </select>
@@ -2005,7 +2012,14 @@
                                     ${Array.from({length: 15}, (_, i) => {
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
-                                        const selected = isInterval && phase.restLevel === level ? 'selected' : (level === 4 ? 'selected' : '');
+                                        let selected = '';
+                                        if (isInterval && phase.restLevel !== undefined) {
+                                            // Use saved value
+                                            selected = phase.restLevel === level ? 'selected' : '';
+                                        } else if (!isInterval && level === 4) {
+                                            // Default for new intervals
+                                            selected = 'selected';
+                                        }
                                         return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
                                 </select>
