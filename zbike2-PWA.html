@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zbike 2 - Allenamenti</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,7 +19,10 @@
             color: #fff;
             font-family: 'Chakra Petch', monospace;
             padding: 10px;
-            zoom: 0.7; /* Riduce tutto del 30% (70% della dimensione originale) */
+            transform: scale(0.7);
+            transform-origin: top center;
+            width: 142.857%; /* 100 / 0.7 per compensare lo scale */
+            margin-left: -21.4285%; /* (142.857 - 100) / 2 per centrare */
         }
 
         .container {
@@ -660,20 +664,21 @@
             <!-- Session Controls (Hidden until connected) -->
             <div class="panel hidden" id="sessionControlsPanel">
                 <h2>🚴 Sessione Libera</h2>
-                <div class="session-controls">
-                    <button id="playSessionBtn" class="session-btn play" title="Avvia sessione" disabled>
-                        ▶
-                    </button>
-                    <button id="pauseSessionBtn" class="session-btn pause" title="Pausa" style="display: none;">
-                        ⏸
-                    </button>
-                    <button id="stopSessionBtn" class="session-btn stop" title="Stop" style="display: none;">
-                        ⏹
-                    </button>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <button id="startSessionBtn" class="btn">▶️ AVVIA SESSIONE</button>
+                </div>
+                
+                <div id="sessionActiveControls" class="hidden">
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+                        <button id="pauseSessionBtn" class="btn small secondary">⏸ Pausa</button>
+                        <button id="resumeSessionBtn" class="btn small secondary hidden">▶️ Riprendi</button>
+                        <button id="stopSessionBtn" class="btn small danger">⏹ Stop</button>
+                    </div>
                     
-                    <div class="session-timer">
-                        <div class="session-timer-label">⏱ Tempo</div>
-                        <div class="session-timer-value" id="sessionTimerDisplay">00:00</div>
+                    <div class="session-timer" style="text-align: center; margin-bottom: 20px;">
+                        <div class="session-timer-label" style="font-size: 12px; color: #888; margin-bottom: 5px;">⏱ TEMPO</div>
+                        <div class="session-timer-value" id="sessionTimerDisplay" style="font-size: 24px; font-weight: 700; color: #00ff88;">00:00</div>
                     </div>
                 </div>
             </div>
@@ -809,6 +814,12 @@
                         </div>
                     </div>
 
+                    <!-- Power Chart (shown at end of workout) -->
+                    <div id="powerChartContainer" class="hidden" style="margin-top: 20px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 15px;">
+                        <h3 style="font-size: 14px; color: #00ff88; margin-bottom: 10px; text-align: center;">📈 Potenza nel Tempo</h3>
+                        <canvas id="powerChart" style="max-height: 200px;"></canvas>
+                    </div>
+
                     <!-- Manual Override Controls -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(255, 170, 0, 0.05); border: 1px solid rgba(255, 170, 0, 0.2); border-radius: 12px;">
                         <div style="color: #ffaa00; font-size: 13px; font-weight: 600; margin-bottom: 10px;">
@@ -900,7 +911,7 @@
         function startSimulation() {
             if (!simulationMode || simulationRunning) return;
             simulationRunning = true;
-            simData.distance = 0;
+            simData.distance = totalDistance; // Sync with totalDistance
             currentPattern = -1;
             document.getElementById('simState').textContent = 'In corso';
             simulationLoop();
@@ -949,8 +960,13 @@
             if (!simulationMode || !simulationRunning) return;
             const distanceIncrement = simData.speed / 3600;
             simData.distance += distanceIncrement;
-            document.getElementById('distanceValue').textContent = simData.distance.toFixed(1);
+            totalDistance += distanceIncrement; // IMPORTANTE: aggiorna anche totalDistance!
+            document.getElementById('distanceValue').textContent = totalDistance.toFixed(2);
             document.getElementById('simDistance').textContent = simData.distance.toFixed(2);
+            
+            // Update runner distance if in workout
+            const runnerDistance = document.getElementById('runnerDistanceValue');
+            if (runnerDistance) runnerDistance.textContent = totalDistance.toFixed(2);
         }
         function updateSimData(power, cadence, speed) {
             document.getElementById('powerValue').textContent = Math.round(power);
@@ -964,6 +980,11 @@
             if (runnerPower) runnerPower.textContent = Math.round(power);
             if (runnerCadence) runnerCadence.textContent = Math.round(cadence);
             if (runnerSpeed) runnerSpeed.textContent = speed.toFixed(1);
+            
+            // Update power chart in simulation mode
+            if (freeRideActive || runningWorkout) {
+                updatePowerChart(Math.round(power));
+            }
             
             // Update distance in simulation mode
             if ((freeRideActive || runningWorkout) && speed > 0) {
@@ -998,10 +1019,141 @@
         let workoutPaused = false;
         let currentPhaseIndex = 0;
         let phaseTimeRemaining = 0;
+        let phaseDistanceStart = 0; // Distanza all'inizio della fase (per fasi KM-based)
         let totalWorkoutTime = 0;
+        
+        // Power chart data
+        let powerChartData = {
+            labels: [],
+            values: []
+        };
+        let powerChart = null;
+        let chartUpdateCounter = 0; // Update chart every N data points for performance
 
         // Audio context for notifications
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function initPowerChart() {
+            if (powerChart) return; // Already initialized
+            
+            console.log('Initializing power chart...');
+            const canvas = document.getElementById('powerChart');
+            const container = document.getElementById('powerChartContainer');
+            
+            if (!canvas) {
+                console.error('Power chart canvas not found!');
+                return;
+            }
+            
+            // Temporarily show container for Chart.js to calculate dimensions
+            const wasHidden = container.classList.contains('hidden');
+            if (wasHidden) {
+                container.classList.remove('hidden');
+            }
+            
+            const ctx = canvas.getContext('2d');
+            powerChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: powerChartData.labels,
+                    datasets: [{
+                        label: 'Potenza (W)',
+                        data: powerChartData.values,
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 0
+                    }
+                }
+            });
+            
+            // Hide container again if it was hidden
+            if (wasHidden) {
+                container.classList.add('hidden');
+            }
+            
+            console.log('Power chart initialized successfully');
+        }
+        
+        function updatePowerChart(power) {
+            // Lazy init if needed
+            if (!powerChart) {
+                console.log('Chart not initialized, initializing now...');
+                initPowerChart();
+                if (!powerChart) {
+                    console.error('Failed to initialize power chart!');
+                    return;
+                }
+            }
+            
+            // Always add data point
+            const elapsedSeconds = powerChartData.values.length;
+            const mins = Math.floor(elapsedSeconds / 60);
+            const secs = elapsedSeconds % 60;
+            const timeLabel = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            powerChartData.labels.push(timeLabel);
+            powerChartData.values.push(power);
+            
+            // CRITICAL: Ensure Chart.js references our arrays
+            powerChart.data.labels = powerChartData.labels;
+            powerChart.data.datasets[0].data = powerChartData.values;
+            
+            // Log first few data points for debugging
+            if (powerChartData.values.length <= 5) {
+                console.log('Power chart data point:', powerChartData.values.length, 'power:', power);
+            }
+            
+            // Update chart every 3 seconds for performance (not every data point)
+            chartUpdateCounter++;
+            if (chartUpdateCounter >= 3) {
+                chartUpdateCounter = 0;
+                powerChart.update('none'); // 'none' = no animation for better performance
+                if (powerChartData.values.length <= 5) {
+                    console.log('Chart updated, total points:', powerChartData.values.length);
+                }
+            }
+        }
+        
+        function resetPowerChart() {
+            powerChartData.labels = [];
+            powerChartData.values = [];
+            chartUpdateCounter = 0;
+            if (powerChart) {
+                powerChart.update();
+            }
+        }
 
         // ===== ELEMENTS =====
         const tabs = document.querySelectorAll('.tab');
@@ -1080,15 +1232,7 @@
         }
         
         function parseFitnessMachineData(data) {
-            // Zbike 2 Indoor Bike Data - Custom structure (not standard FTMS)
-            // Structure observed from logs:
-            // Bytes 0-1: Flags (0x0874 = 0000100001110100)
-            // Bytes 2-3: Speed (x10, km/h) ← CORRECTED
-            // Bytes 4-5: Cadence (x2, RPM)
-            // Bytes 6-9: Unknown/Reserved
-            // Bytes 10-11: Distance counter (3 bytes)
-            // Bytes 11-12: Power (Watts)
-            
+            // Parse based on detected trainer profile
             if (data.length < 13) {
                 console.warn('Data too short:', data.length);
                 return;
@@ -1096,23 +1240,24 @@
             
             const flags = data[0] | (data[1] << 8);
             console.log('FTMS Flags:', flags.toString(2).padStart(16, '0'), 'Data length:', data.length);
+            console.log('Profile:', currentProfile.name);
             
-            // Speed at bytes 2-3 (resolution 0.1 km/h) ← CORRECTED FROM /100 TO /10
-            const speedRaw = data[2] | (data[3] << 8);
-            const speed = speedRaw / 10; // CHANGED: divide by 10 instead of 100
-            console.log('Speed:', speed, 'km/h (raw:', speedRaw, ')');
+            // Speed - using profile configuration
+            const speedRaw = data[currentProfile.speedBytes[0]] | (data[currentProfile.speedBytes[1]] << 8);
+            const speed = speedRaw / currentProfile.speedDivisor;
+            console.log('Speed:', speed, 'km/h (raw:', speedRaw, 'divisor:', currentProfile.speedDivisor, ')');
             if (speed > 0) updateMetric('speed', speed);
             
-            // Cadence at bytes 4-5 (resolution 0.5 RPM)
-            const cadenceRaw = data[4] | (data[5] << 8);
-            const cadence = cadenceRaw / 2;
+            // Cadence - using profile configuration
+            const cadenceRaw = data[currentProfile.cadenceBytes[0]] | (data[currentProfile.cadenceBytes[1]] << 8);
+            const cadence = cadenceRaw / currentProfile.cadenceDivisor;
             console.log('Cadence:', cadence, 'RPM (raw:', cadenceRaw, ')');
             if (cadence > 0) updateMetric('cadence', cadence);
             
-            // Power at bytes 11-12 (Watts) - CORRECTED POSITION
-            if (data.length >= 13) {
-                const power = data[11] | (data[12] << 8);
-                console.log('Power:', power, 'W (bytes 11-12)');
+            // Power - using profile configuration
+            if (data.length >= (currentProfile.powerBytes[1] + 1)) {
+                const power = data[currentProfile.powerBytes[0]] | (data[currentProfile.powerBytes[1]] << 8);
+                console.log('Power:', power, 'W (bytes', currentProfile.powerBytes[0], '-', currentProfile.powerBytes[1], ')');
                 if (power > 0 && power < 1000) { // Sanity check: max 1000W
                     updateMetric('power', power);
                 }
@@ -1152,6 +1297,49 @@
             }
         }
         
+        // ==================== TRAINER PROFILES ====================
+        // Different trainers implement FTMS differently
+        const trainerProfiles = {
+            'zbike2': {
+                name: 'Zbike 2',
+                patterns: ['zbike', 'z-bike', 'z bike'],
+                speedDivisor: 10,  // Speed raw value ÷ 10 = km/h
+                cadenceDivisor: 2, // Cadence raw value ÷ 2 = RPM
+                powerBytes: [11, 12], // Power at bytes 11-12
+                speedBytes: [2, 3],   // Speed at bytes 2-3
+                cadenceBytes: [4, 5]  // Cadence at bytes 4-5
+            },
+            'standard_ftms': {
+                name: 'Standard FTMS',
+                patterns: ['wahoo', 'tacx', 'elite', 'saris', 'kinetic', 'jetblack'],
+                speedDivisor: 100, // Standard FTMS: ÷100
+                cadenceDivisor: 2,
+                powerBytes: [6, 7], // Standard position
+                speedBytes: [2, 3],
+                cadenceBytes: [4, 5]
+            }
+        };
+        
+        let currentProfile = trainerProfiles.zbike2; // Default
+        
+        function detectTrainerProfile(deviceName) {
+            const nameLower = deviceName.toLowerCase();
+            
+            // Check each profile
+            for (const [key, profile] of Object.entries(trainerProfiles)) {
+                for (const pattern of profile.patterns) {
+                    if (nameLower.includes(pattern)) {
+                        console.log(`✅ Detected trainer: ${profile.name}`);
+                        return profile;
+                    }
+                }
+            }
+            
+            // Default to standard FTMS if unknown
+            console.log('⚠️ Unknown trainer, using Standard FTMS profile');
+            return trainerProfiles.standard_ftms;
+        }
+        
         // Variables for distance calculation
         let lastSpeedUpdate = Date.now();
         let lastSpeed = 0;
@@ -1161,6 +1349,11 @@
                 document.getElementById('powerValue').textContent = Math.round(value);
                 const runnerPower = document.getElementById('runnerPowerValue');
                 if (runnerPower) runnerPower.textContent = Math.round(value);
+                
+                // Update power chart
+                if (freeRideActive || runningWorkout) {
+                    updatePowerChart(Math.round(value));
+                }
             } else if (type === 'cadence') {
                 document.getElementById('cadenceValue').textContent = Math.round(value);
                 const runnerCadence = document.getElementById('runnerCadenceValue');
@@ -1265,6 +1458,11 @@
                         }
                         
                         console.log('Connected! Getting services...');
+                        
+                        // Detect trainer profile based on device name
+                        currentProfile = detectTrainerProfile(device.name || '');
+                        console.log(`📱 Device: ${device.name}`);
+                        console.log(`✅ Using profile: ${currentProfile.name}`);
                         
                         // Small delay to ensure connection is stable
                         await new Promise(resolve => setTimeout(resolve, 300));
@@ -1372,7 +1570,6 @@
 
         function updateConnectionUI() {
             const statusDot = document.getElementById('statusDot');
-            const playBtn = document.getElementById('playSessionBtn');
             
             if (connected) {
                 // Status dot
@@ -1384,9 +1581,6 @@
                 // disconnectBtn shown (power button)
                 connectBtn.style.display = 'none';
                 scanBtn.style.display = 'none';
-                
-                // Enable play button
-                playBtn.disabled = false;
                 
                 // Show session controls
                 const sessionPanel = document.getElementById('sessionControlsPanel');
@@ -1721,7 +1915,17 @@
             const phaseNum = phaseList.children.length + 1;
             
             const isInterval = phase && phase.type === 'interval';
-            const durationMode = phase && phase.distanceKm ? 'distance' : 'time';
+            const durationMode = phase && phase.isKmBased ? 'distance' : 'time';
+            
+            // Calculate display value based on mode
+            let durationValue = '';
+            if (phase && !isInterval) {
+                if (phase.isKmBased) {
+                    durationValue = phase.duration; // Already in KM
+                } else {
+                    durationValue = phase.duration / 60; // Convert seconds to minutes
+                }
+            }
             
             const phaseDiv = document.createElement('div');
             phaseDiv.className = 'phase-item';
@@ -1750,7 +1954,7 @@
                             </select>
                         </div>
                         <div class="form-group" style="margin: 0;" class="duration-input-container">
-                            <input type="number" class="phase-duration" placeholder="${durationMode === 'time' ? 'Min' : 'Km'}" min="0.1" step="0.1" value="${phase && !isInterval ? (phase.distanceKm || phase.duration / 60) : ''}" onchange="updateTotalDuration()" style="font-size: 12px; padding: 8px;">
+                            <input type="number" class="phase-duration" placeholder="${durationMode === 'time' ? 'Min' : 'Km'}" min="0.1" step="0.1" value="${durationValue}" onchange="updateTotalDuration()" style="font-size: 12px; padding: 8px;">
                         </div>
                         <div class="form-group" style="margin: 0;">
                             <select class="phase-level" onchange="updateTotalDuration()" style="padding: 8px; font-size: 11px;">
@@ -1976,13 +2180,13 @@
                     };
                     
                     if (durationMode === 'distance') {
-                        // Store distance in km, calculate estimated duration
-                        phaseData.distanceKm = durationValue;
-                        // Estimate 25 km/h average speed for duration calculation
-                        phaseData.duration = Math.round((durationValue / 25) * 3600); // seconds
+                        // Distance-based phase
+                        phaseData.isKmBased = true;
+                        phaseData.duration = durationValue; // Store KM value in duration field
                     } else {
-                        // Store time in seconds
-                        phaseData.duration = Math.round(durationValue * 60);
+                        // Time-based phase
+                        phaseData.isKmBased = false;
+                        phaseData.duration = Math.round(durationValue * 60); // Convert minutes to seconds
                     }
                     
                     phases.push(phaseData);
@@ -2040,6 +2244,14 @@
             // Reset distance display
             document.getElementById('runnerDistanceValue').textContent = '0.0';
             
+            // Reset power chart and initialize if needed
+            resetPowerChart();
+            if (!powerChart) {
+                console.log('Initializing chart at workout start...');
+                initPowerChart();
+            }
+            document.getElementById('powerChartContainer').classList.add('hidden');
+            
             // Keep screen on during workout
             requestWakeLock();
             
@@ -2071,6 +2283,7 @@
             currentPhaseIndex = index;
             const phase = runningWorkout.phases[index];
             phaseTimeRemaining = 0; // Start from 0 and count up
+            phaseDistanceStart = totalDistance; // Save current distance for KM-based phases
             
             // Update UI
             document.getElementById('runnerCurrentPhase').textContent = phase.name;
@@ -2109,27 +2322,46 @@
             phaseTimeRemaining++;
             totalWorkoutTime++;
             
-            // Update phase timer
-            const mins = Math.floor(phaseTimeRemaining / 60);
-            const secs = phaseTimeRemaining % 60;
-            document.getElementById('runnerTimer').textContent = 
-                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            
-            // Update progress bar
             const phase = runningWorkout.phases[currentPhaseIndex];
-            const progress = (phaseTimeRemaining / phase.duration) * 100;
-            document.getElementById('runnerProgressBar').style.width = `${progress}%`;
             
-            // Ski-start countdown beeps at 3 seconds before phase change
-            const timeToEnd = phase.duration - phaseTimeRemaining;
-            if (timeToEnd === 3) {
-                playSkiStartBeeps();
+            // Calculate progress based on phase type
+            let progress = 0;
+            let displayValue = '';
+            
+            if (phase.isKmBased) {
+                // KM-based phase: show distance covered
+                const distanceCovered = totalDistance - phaseDistanceStart;
+                progress = (distanceCovered / phase.duration) * 100;
+                displayValue = `${distanceCovered.toFixed(2)} / ${phase.duration.toFixed(1)} km`;
+                
+                // Check if phase is complete
+                if (distanceCovered >= phase.duration) {
+                    startPhase(currentPhaseIndex + 1);
+                    return;
+                }
+            } else {
+                // Time-based phase: show time elapsed
+                progress = (phaseTimeRemaining / phase.duration) * 100;
+                const mins = Math.floor(phaseTimeRemaining / 60);
+                const secs = phaseTimeRemaining % 60;
+                displayValue = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                
+                // Ski-start countdown beeps at 3 seconds before phase change
+                const timeToEnd = phase.duration - phaseTimeRemaining;
+                if (timeToEnd === 3) {
+                    playSkiStartBeeps();
+                }
+                
+                // Check if phase is complete
+                if (phaseTimeRemaining >= phase.duration) {
+                    startPhase(currentPhaseIndex + 1);
+                    return;
+                }
             }
             
-            // Move to next phase
-            if (phaseTimeRemaining >= phase.duration) {
-                startPhase(currentPhaseIndex + 1);
-            }
+            // Update UI
+            document.getElementById('runnerTimer').textContent = displayValue;
+            document.getElementById('runnerProgressBar').style.width = `${Math.min(progress, 100)}%`;
         }
 
         function pauseWorkout() {
@@ -2169,6 +2401,15 @@
                 workoutTimer = null;
             }
             
+            // Final chart update and show it (if workout was running)
+            if (runningWorkout && powerChart) {
+                // Re-assign arrays to ensure Chart.js sees them
+                powerChart.data.labels = powerChartData.labels;
+                powerChart.data.datasets[0].data = powerChartData.values;
+                powerChart.update('none');
+                document.getElementById('powerChartContainer').classList.remove('hidden');
+            }
+            
             runningWorkout = null;
             workoutPaused = false;
             
@@ -2180,9 +2421,11 @@
             document.getElementById('workoutList').style.display = 'grid';
             document.getElementById('newWorkoutBtn').style.display = 'inline-block';
             
-            // Reset buttons
+            // Reset buttons text and visibility
             document.getElementById('pauseBtn').classList.remove('hidden');
             document.getElementById('resumeBtn').classList.add('hidden');
+            document.getElementById('stopBtn').textContent = '⏹ Stop';
+            document.getElementById('stopRunnerBtn').textContent = '⏹ Stop';
             
             // Reset to level 1
             changePowerLevel(1);
@@ -2206,21 +2449,51 @@
                 workoutTimer = null;
             }
             
+            // Final chart update and show it
+            console.log('=== FINISH WORKOUT DEBUG ===');
+            console.log('Power chart exists:', !!powerChart);
+            console.log('Data points collected:', powerChartData.values.length);
+            console.log('First 10 values:', powerChartData.values.slice(0, 10));
+            console.log('Last 10 values:', powerChartData.values.slice(-10));
+            console.log('Labels count:', powerChartData.labels.length);
+            
+            // TEST: Add fake data if no real data was collected
+            if (powerChartData.values.length === 0) {
+                console.warn('NO DATA COLLECTED! Adding test data...');
+                for (let i = 0; i < 20; i++) {
+                    powerChartData.labels.push(`${i}s`);
+                    powerChartData.values.push(100 + Math.random() * 50);
+                }
+            }
+            
+            if (powerChart) {
+                // CRITICAL: Re-assign arrays to ensure Chart.js sees them
+                powerChart.data.labels = powerChartData.labels;
+                powerChart.data.datasets[0].data = powerChartData.values;
+                powerChart.update('none');
+                
+                document.getElementById('powerChartContainer').classList.remove('hidden');
+                console.log('Chart container visible');
+                console.log('Chart datasets:', powerChart.data.datasets[0].data.length);
+            } else {
+                console.error('Power chart not initialized!');
+            }
+            
+            // Show completion message
+            document.getElementById('runnerCurrentPhase').textContent = '✅ COMPLETATO!';
+            document.getElementById('runnerCurrentPhase').style.color = '#00ff88';
+            document.getElementById('runnerTimer').textContent = '🎉';
+            
+            // Hide pause/resume buttons, keep only stop
+            document.getElementById('pauseBtn').classList.add('hidden');
+            document.getElementById('resumeBtn').classList.add('hidden');
+            document.getElementById('stopBtn').textContent = '✓ Chiudi';
+            document.getElementById('stopRunnerBtn').textContent = '✓ Chiudi';
+            
             // Victory celebration beeps
             playBeep(800, 150);
             setTimeout(() => playBeep(1000, 150), 200);
             setTimeout(() => playBeep(1200, 300), 400);
-            
-            setTimeout(() => {
-                runningWorkout = null;
-                document.getElementById('runnerActive').classList.add('hidden');
-                document.getElementById('workoutList').style.display = 'grid';
-                document.getElementById('newWorkoutBtn').style.display = 'inline-block';
-                renderWorkoutList();
-                document.getElementById('runnerIdle').classList.remove('hidden');
-                document.getElementById('runnerActive').classList.add('hidden');
-                changePowerLevel(1);
-            }, 1000);
         }
 
         
@@ -2241,13 +2514,17 @@
             // Reset distance display
             document.getElementById('distanceValue').textContent = '0.0';
             
+            // Reset power chart
+            resetPowerChart();
+            
             // Keep screen on during free ride
             requestWakeLock();
             
-            // UI updates
-            document.getElementById('playSessionBtn').style.display = 'none';
-            document.getElementById('pauseSessionBtn').style.display = 'inline-flex';
-            document.getElementById('stopSessionBtn').style.display = 'inline-flex';
+            // UI updates - hide start button, show active controls
+            document.getElementById('startSessionBtn').classList.add('hidden');
+            document.getElementById('sessionActiveControls').classList.remove('hidden');
+            document.getElementById('pauseSessionBtn').classList.remove('hidden');
+            document.getElementById('resumeSessionBtn').classList.add('hidden');
             
             // Start timer
             freeRideTimer = setInterval(() => {
@@ -2265,10 +2542,8 @@
             freeRidePaused = true;
             
             // UI updates
-            document.getElementById('pauseSessionBtn').style.display = 'none';
-            document.getElementById('playSessionBtn').style.display = 'inline-flex';
-            document.getElementById('playSessionBtn').innerHTML = '▶';
-            document.getElementById('playSessionBtn').title = 'Riprendi';
+            document.getElementById('pauseSessionBtn').classList.add('hidden');
+            document.getElementById('resumeSessionBtn').classList.remove('hidden');
             
             playBeep(600, 200);
         
@@ -2279,8 +2554,8 @@
             freeRidePaused = false;
             
             // UI updates
-            document.getElementById('playSessionBtn').style.display = 'none';
-            document.getElementById('pauseSessionBtn').style.display = 'inline-flex';
+            document.getElementById('pauseSessionBtn').classList.remove('hidden');
+            document.getElementById('resumeSessionBtn').classList.add('hidden');
             
             playBeep(1000, 200);
         
@@ -2304,17 +2579,19 @@
                 freeRideTimer = null;
             }
             
+            // Final chart update to show all data
+            if (powerChart) {
+                powerChart.update();
+            }
+            
             // Stop simulation if running
             if (simulationMode && simulationRunning) { 
                 stopSimulation(); 
             }
             
-            // UI updates
-            document.getElementById('playSessionBtn').style.display = 'inline-flex';
-            document.getElementById('playSessionBtn').innerHTML = '▶';
-            document.getElementById('playSessionBtn').title = 'Avvia sessione';
-            document.getElementById('pauseSessionBtn').style.display = 'none';
-            document.getElementById('stopSessionBtn').style.display = 'none';
+            // UI updates - show start button, hide active controls
+            document.getElementById('startSessionBtn').classList.remove('hidden');
+            document.getElementById('sessionActiveControls').classList.add('hidden');
             
             freeRideTime = 0;
             updateSessionTimer();
@@ -2347,19 +2624,15 @@
         document.getElementById('stopRunnerBtn').addEventListener('click', stopWorkout);
 
         // Free ride session controls
-        document.getElementById('playSessionBtn').addEventListener('click', () => {
-            if (freeRideActive && freeRidePaused) {
-                resumeFreeRide();
-            } else {
-                startFreeRide();
-            }
-        });
+        document.getElementById('startSessionBtn').addEventListener('click', startFreeRide);
         document.getElementById('pauseSessionBtn').addEventListener('click', pauseFreeRide);
+        document.getElementById('resumeSessionBtn').addEventListener('click', resumeFreeRide);
         document.getElementById('stopSessionBtn').addEventListener('click', stopFreeRide);
 
         // ===== INITIALIZATION =====
         initLevelButtons();
         loadWorkouts();
+        initPowerChart();
 
         if (!navigator.bluetooth) {
             alert('Web Bluetooth non supportato. Usa Chrome o Edge.');
@@ -2374,6 +2647,17 @@
             if('wakeLock' in navigator) {
                 wakeLock = await navigator.wakeLock.request('screen');
                 console.log('Wake Lock attivato');
+                
+                // Re-request wake lock when released (Android bug workaround)
+                wakeLock.addEventListener('release', () => {
+                    console.log('Wake Lock rilasciato automaticamente');
+                    // Auto re-request if session still active
+                    if ((freeRideActive || runningWorkout) && (connected || simulationMode)) {
+                        setTimeout(() => requestWakeLock(), 100);
+                    }
+                });
+            } else {
+                console.warn('Wake Lock API non supportata');
             }
         } catch(e){
             console.error('Wake Lock fallito:', e);
@@ -2384,7 +2668,7 @@
         if(wakeLock) { 
             wakeLock.release(); 
             wakeLock = null; 
-            console.log('Wake Lock rilasciato');
+            console.log('Wake Lock rilasciato manualmente');
         }
     }
 
