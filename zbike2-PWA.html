@@ -1988,12 +1988,14 @@
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
                                         let selected = '';
-                                        if (isInterval && phase.workLevel !== undefined) {
-                                            // Use saved value
-                                            selected = phase.workLevel === level ? 'selected' : '';
-                                        } else if (!isInterval && level === 12) {
-                                            // Default for new intervals
-                                            selected = 'selected';
+                                        if (isInterval) {
+                                            if (phase.workLevel !== undefined) {
+                                                // Use saved value
+                                                selected = phase.workLevel === level ? 'selected' : '';
+                                            } else if (level === 12) {
+                                                // Default for new intervals only
+                                                selected = 'selected';
+                                            }
                                         }
                                         return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
@@ -2013,12 +2015,14 @@
                                         const level = i + 1;
                                         const watts = getEstimatedWatts(level);
                                         let selected = '';
-                                        if (isInterval && phase.restLevel !== undefined) {
-                                            // Use saved value
-                                            selected = phase.restLevel === level ? 'selected' : '';
-                                        } else if (!isInterval && level === 4) {
-                                            // Default for new intervals
-                                            selected = 'selected';
+                                        if (isInterval) {
+                                            if (phase.restLevel !== undefined) {
+                                                // Use saved value
+                                                selected = phase.restLevel === level ? 'selected' : '';
+                                            } else if (level === 4) {
+                                                // Default for new intervals only
+                                                selected = 'selected';
+                                            }
                                         }
                                         return `<option value="${level}" ${selected}>Lv.${level} (~${watts}W)</option>`;
                                     }).join('')}
@@ -2156,6 +2160,8 @@
                     const repeats = parseInt(el.querySelector('.interval-repeats').value) || 0;
                     const workLevel = parseInt(el.querySelector('.interval-work-level').value);
                     const restLevel = parseInt(el.querySelector('.interval-rest-level').value);
+                    
+                    console.log('Saving interval: workLevel =', workLevel, ', restLevel =', restLevel);
                     
                     if (workDur <= 0 || restDur <= 0 || repeats <= 0) {
                         return; // Skip invalid intervals
